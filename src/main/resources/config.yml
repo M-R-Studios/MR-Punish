@@ -1,0 +1,5 @@
+# MR-Punish configuration
+# Every option is documented here. After editing, run /mrpunish reload.
+
+# Do not change. Used to upgrade this file automatically when the plugin updates.
+config-version: 1

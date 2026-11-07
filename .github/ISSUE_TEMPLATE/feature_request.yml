@@ -1,0 +1,28 @@
+name: Feature request
+description: Suggest a new feature or a change to an existing one.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Describe what you or your players are trying to do and what gets in the way.
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: How you would like it to work, including any config options or commands.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other plugins or workarounds you have tried.
+  - type: input
+    id: server
+    attributes:
+      label: Server software and version
+      description: e.g. "Paper 1.21.11". Helps us check compatibility.

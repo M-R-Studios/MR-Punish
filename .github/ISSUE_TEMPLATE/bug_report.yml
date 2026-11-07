@@ -1,0 +1,73 @@
+name: Bug report
+description: Something is broken. Lost or duplicated items? Use this form and tick the data-loss box.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Filling in every field lets us reproduce the bug on the first try instead of asking you questions.
+        **Items lost, deleted or duplicated?** Tick the box below; those reports are handled first.
+  - type: checkboxes
+    id: data-loss
+    attributes:
+      label: Data loss or dupe
+      options:
+        - label: This bug loses, deletes or duplicates items.
+  - type: input
+    id: server
+    attributes:
+      label: Server software and version
+      description: Output of `/version`, e.g. "Paper 1.21.11 build 123".
+    validations:
+      required: true
+  - type: input
+    id: plugin-version
+    attributes:
+      label: MR-Punish version
+      description: Output of `/version MR-Punish`.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Exact steps from a fresh join. Mention if the player is on Bedrock (Geyser) or which other plugins are involved.
+      placeholder: |
+        1. Run /punish on another player
+        2. Right-click it in the inventory
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+    validations:
+      required: true
+  - type: input
+    id: log
+    attributes:
+      label: Server log (mclo.gs link)
+      description: Upload `logs/latest.log` to https://mclo.gs and paste the link. Include the startup and the moment the bug happened.
+      placeholder: https://mclo.gs/...
+    validations:
+      required: true
+  - type: input
+    id: spark
+    attributes:
+      label: Spark report (optional)
+      description: For lag or performance issues, run `/spark profiler` and paste the link.
+      placeholder: https://spark.lucko.me/...
+  - type: checkboxes
+    id: latest
+    attributes:
+      label: Latest version
+      options:
+        - label: I tested on the latest version of MR-Punish.
+          required: true

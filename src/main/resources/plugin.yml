@@ -1,0 +1,7 @@
+name: MR-Punish
+version: '${project.version}'
+main: com.mrstudios.punish.MRPunish
+api-version: '1.21'
+author: MR Studios
+description: Staff management and punishments with automatic escalation, reports and staff tools.
+folia-supported: false
