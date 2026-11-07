@@ -24,6 +24,17 @@ public final class MessagesLoader {
      */
     private static final Map<String, Set<String>> PLACEHOLDERS = Map.ofEntries(
             Map.entry("admin.version", Set.of("version", "server", "storage", "storage-status", "clashes")),
+            Map.entry("general.warning-offence", Set.of("offence")),
+            Map.entry("notify.issued", Set.of("staff", "type-verb", "target", "reason", "duration", "id", "silent",
+                    "note")),
+            Map.entry("notify.removed", Set.of("staff", "type", "ids", "target", "removal-reason")),
+            Map.entry("notify.ip-suffix", Set.of("accounts")),
+            Map.entry("notify.note-suffix", Set.of("note")),
+            Map.entry("announce.WARN", Set.of("target", "reason")),
+            Map.entry("announce.MUTE", Set.of("target", "reason")),
+            Map.entry("announce.BAN", Set.of("target", "reason")),
+            Map.entry("announce.IP_MUTE", Set.of("target", "reason")),
+            Map.entry("announce.IP_BAN", Set.of("target", "reason")),
             Map.entry("admin.reload-warnings", Set.of("count")),
             Map.entry("admin.reload-failed", Set.of("file")),
             Map.entry("admin.reload-detail", Set.of("detail")),

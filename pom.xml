@@ -90,6 +90,13 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
+            <!-- Optional hook for offline ranks; only touched when LuckPerms is installed. -->
+            <groupId>net.luckperms</groupId>
+            <artifactId>api</artifactId>
+            <version>5.4</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
             <!-- Connection pool for MySQL storage; shaded and relocated. The JDBC drivers
                  (SQLite, MySQL) and SLF4J come with Paper. -->
             <groupId>com.zaxxer</groupId>

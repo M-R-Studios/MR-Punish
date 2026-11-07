@@ -6,6 +6,10 @@
 # Do not change. Used to upgrade this file automatically when the plugin updates.
 config-version: 1
 
+# Name of this server in punishments, reports and logs. Useful when several servers share one
+# MySQL database. Empty = "default". At most 32 characters.
+server-name: ""
+
 escalation:
   # How far back previous punishments of the same type and reason are counted when working out
   # the next escalation step. A reason can override this with its own history-period.
@@ -239,6 +243,20 @@ reasons:
     aliases: [other]
     escalation: ["7d", "30d"]
 
+warnings:
+  # How long a warning shows as "Active" and counts in the active punishment count.
+  # Display only: escalation uses the history period above. "permanent" = always active.
+  active-for: 90d
+
+announcements:
+  # Tell every player when someone is punished. Never includes IP addresses or staff notes.
+  # A silent punishment never announces. Staff with mrpunish.notify are always notified.
+  WARN: false
+  MUTE: false
+  BAN: true
+  IP_MUTE: false
+  IP_BAN: true
+
 # Turn MR-Punish commands off so that another plugin or vanilla gets that label instead, and add
 # extra labels. The namespaced form (e.g. /mr-punish:ban) always works. Changing these needs a restart.
 # Each entry looks like:  ban: { enabled: true, aliases: [] }
@@ -271,3 +289,13 @@ storage:
     # Extra JDBC connection properties.
     properties:
       sslMode: PREFERRED
+
+hooks:
+  # Use LuckPerms (if installed) to check the rank of offline players. Without it, an offline
+  # player's rank is the one they had when they were last online. Changing this needs a restart.
+  luckperms: true
+
+sounds:
+  # Each sound: enabled, sound key (e.g. minecraft:block.note_block.pling), volume (0.0-10.0), pitch (0.5-2.0).
+  # Played to staff with each punishment or removal notification.
+  notify: { enabled: true, sound: minecraft:block.note_block.pling, volume: 0.6, pitch: 1.4 }

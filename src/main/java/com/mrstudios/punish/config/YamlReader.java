@@ -76,6 +76,21 @@ final class YamlReader {
         return def;
     }
 
+    float decimal(String path, double min, double max, float def) {
+        Object value = value(path, def);
+        if (value == null) {
+            return def;
+        }
+        if (value instanceof Number n) {
+            double d = n.doubleValue();
+            if (d >= min && d <= max) {
+                return (float) d;
+            }
+        }
+        invalid(path, value, "a number from " + min + " to " + max, def);
+        return def;
+    }
+
     /** Text, trimmed. Numbers and booleans are accepted as text. */
     String text(String path, String def, Predicate<String> valid, String accepted) {
         Object value = value(path, "\"" + def + "\"");

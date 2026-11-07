@@ -21,6 +21,7 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import org.bukkit.NamespacedKey;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 
@@ -40,7 +41,7 @@ public final class SettingsLoader {
     private static final Pattern TABLE_PREFIX = Pattern.compile("[a-z0-9_]{0,16}");
 
     private static final Set<String> TOP_LEVEL = Set.of("config-version", "escalation", "fallback-reasons", "reasons",
-            "commands", "storage");
+            "commands", "storage", "server-name", "warnings", "announcements", "hooks", "sounds");
     private static final Set<String> REASON_FIELDS = Set.of("type", "display", "description", "icon", "slot", "aliases",
             "escalation", "history-period", "permission", "enabled");
     private static final Set<String> TOGGLE_FIELDS = Set.of("enabled", "aliases");
@@ -50,6 +51,7 @@ public final class SettingsLoader {
     private static final int MAX_SLOT = 53;
 
     private final Predicate<String> isItem;
+    private final Predicate<NamespacedKey> soundExists;
     private final Set<String> reservedLabels;
     private final Map<String, CommandToggle> commandDefaults;
     private final YamlConfiguration bundled;
@@ -63,7 +65,14 @@ public final class SettingsLoader {
      */
     public SettingsLoader(Predicate<String> isItem, List<String> toggleable, Set<String> reservedLabels,
             YamlConfiguration bundled) {
+        this(isItem, key -> true, toggleable, reservedLabels, bundled);
+    }
+
+    /** @param soundExists whether a key names a sound in the server's sound registry */
+    public SettingsLoader(Predicate<String> isItem, Predicate<NamespacedKey> soundExists, List<String> toggleable,
+            Set<String> reservedLabels, YamlConfiguration bundled) {
         this.isItem = isItem;
+        this.soundExists = soundExists;
         this.reservedLabels = Set.copyOf(reservedLabels);
         this.bundled = bundled;
         Map<String, CommandToggle> defaults = new LinkedHashMap<>();
@@ -145,7 +154,46 @@ public final class SettingsLoader {
 
         Map<String, CommandToggle> commands = readCommands(yaml, commandDefaults, warnings);
         Storage storage = readStorage(yaml, r, warnings);
-        return LoadResult.loaded(new Settings(historyPeriod, registry, commands, storage), warnings);
+
+        String serverName = r.text("server-name", "", s -> s.length() <= 32 && !s.contains(" "),
+                "a name of at most 32 characters without spaces");
+        TimeSpan activeFor = r.duration("warnings.active-for", "90d");
+        warnUnknownIn(yaml, "warnings", Set.of("active-for"), warnings);
+        Map<PunishmentType, Boolean> announcements = new EnumMap<>(PunishmentType.class);
+        for (PunishmentType type : PunishmentType.values()) {
+            boolean def = type == PunishmentType.BAN || type == PunishmentType.IP_BAN;
+            announcements.put(type, r.bool("announcements." + type.name(), def));
+        }
+        warnUnknownIn(yaml, "announcements", java.util.Arrays.stream(PunishmentType.values()).map(Enum::name)
+                .collect(Collectors.toSet()), warnings);
+        boolean luckperms = r.bool("hooks.luckperms", true);
+        warnUnknownIn(yaml, "hooks", Set.of("luckperms"), warnings);
+        Settings.SoundSetting notify = sound(r, "sounds.notify",
+                new Settings.SoundSetting(true, NamespacedKey.minecraft("block.note_block.pling"), 0.6f, 1.4f));
+        warnUnknownIn(yaml, "sounds", Set.of("notify"), warnings);
+        warnUnknownIn(yaml, "sounds.notify", Set.of("enabled", "sound", "volume", "pitch"), warnings);
+
+        return LoadResult.loaded(new Settings(historyPeriod, registry, commands, storage, serverName, activeFor,
+                announcements, luckperms, notify), warnings);
+    }
+
+    private Settings.SoundSetting sound(YamlReader r, String section, Settings.SoundSetting def) {
+        boolean enabled = r.bool(section + ".enabled", def.enabled());
+        NamespacedKey key = def.sound();
+        Object raw = r.value(section + ".sound", def.sound());
+        if (raw != null) {
+            NamespacedKey parsed = raw instanceof String s ? NamespacedKey.fromString(s.strip()) : null;
+            if (parsed == null) {
+                r.invalid(section + ".sound", raw, "a sound key like minecraft:block.note_block.pling", def.sound());
+            } else if (!soundExists.test(parsed)) {
+                r.invalid(section + ".sound", raw, "a known sound", def.sound());
+            } else {
+                key = parsed;
+            }
+        }
+        float volume = r.decimal(section + ".volume", 0.0, 10.0, def.volume());
+        float pitch = r.decimal(section + ".pitch", 0.5, 2.0, def.pitch());
+        return new Settings.SoundSetting(enabled, key, volume, pitch);
     }
 
     private static Storage readStorage(YamlConfiguration yaml, YamlReader r, List<String> warnings) {

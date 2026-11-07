@@ -16,7 +16,16 @@ import com.mrstudios.punish.config.SettingsLoader;
 import com.mrstudios.punish.config.Settings;
 import com.mrstudios.punish.punish.NameIndex;
 import com.mrstudios.punish.punish.TargetResolver;
+import com.mrstudios.punish.hook.LuckPermsHook;
+import com.mrstudios.punish.punish.Notifier;
+import com.mrstudios.punish.punish.PunishmentService;
+import com.mrstudios.punish.rank.OfflineRanks;
+import com.mrstudios.punish.rank.RankCache;
 import com.mrstudios.punish.rank.RankRegistrar;
+import org.bukkit.Registry;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import com.mrstudios.punish.storage.DatabaseHealth;
 import com.mrstudios.punish.storage.Migrations;
 import com.mrstudios.punish.storage.MysqlDatabase;
@@ -60,6 +69,11 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
     private Storage storage;
     private final NameIndex names = new NameIndex();
     private PlayerTracker tracker;
+    private RankCache rankCache;
+    private PunishmentService punishments;
+    /** Whether the LuckPerms hook was set up at startup (changing that needs a restart). */
+    private boolean luckPermsHooked;
+    private static final long RANK_REFRESH_TICKS = 60 * 20L;
     /** Set once onEnable has opened storage, so the first "storage is up" isn't announced as a recovery. */
     private volatile boolean started;
     private volatile boolean namesLoaded;
@@ -80,7 +94,8 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
         reserved.add(AdminCommand.LABEL);
 
         files = new ConfigFiles(getDataFolder(), name -> saveResource(name, false),
-                new SettingsLoader(MRPunish::isItem, CommandRegistry.names(switchable), reserved,
+                new SettingsLoader(MRPunish::isItem, key -> Registry.SOUNDS.get(key) != null,
+                        CommandRegistry.names(switchable), reserved,
                         SettingsLoader.bundledDefaults()),
                 new MessagesLoader(MessagesLoader.bundledDefaults()),
                 new GuiLoader(),
@@ -114,6 +129,30 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
         tracker = new PlayerTracker(storage, names, () -> state.ranks(), System::currentTimeMillis,
                 this::alertIfStorageDown);
         getServer().getPluginManager().registerEvents(tracker, this);
+        rankCache = new RankCache(() -> state.ranks());
+        getServer().getPluginManager().registerEvents(new Listener() {
+            @EventHandler(priority = EventPriority.LOWEST)
+            public void onJoin(PlayerJoinEvent event) {
+                rankCache.refresh(event.getPlayer());
+            }
+
+            @EventHandler(priority = EventPriority.MONITOR)
+            public void onQuit(PlayerQuitEvent event) {
+                rankCache.forget(event.getPlayer().getUniqueId());
+            }
+        }, this);
+        // Every 60 s: a rank or exempt change while online updates the cached rank in the database
+        // (DESIGN.md 6.4), so it's right for when the player is offline.
+        getServer().getScheduler().runTaskTimer(this, this::refreshRanks, RANK_REFRESH_TICKS, RANK_REFRESH_TICKS);
+        OfflineRanks offline = OfflineRanks.NONE;
+        if (state.settings().luckperms() && getServer().getPluginManager().isPluginEnabled("LuckPerms")) {
+            offline = new LuckPermsHook(() -> state.ranks());
+            luckPermsHooked = true;
+            getLogger().info("Hooked into LuckPerms for the ranks of offline players.");
+        }
+        punishments = new PunishmentService(storage, () -> state, offline,
+                task -> getServer().getScheduler().runTask(this, task),
+                new Notifier(getServer()::getOnlinePlayers, getLogger()), System::currentTimeMillis, getLogger());
         getServer().getScheduler().runTaskTimerAsynchronously(this, storage::check, HEALTH_CHECK_TICKS,
                 HEALTH_CHECK_TICKS);
         // Retention a minute after startup, then once a day (DESIGN.md 9.5).
@@ -263,6 +302,24 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
         return names;
     }
 
+    /** Re-reads every online player's rank; writes the ones that changed (main thread). */
+    private void refreshRanks() {
+        for (Player player : getServer().getOnlinePlayers()) {
+            if (rankCache.refresh(player)) {
+                tracker.record(player);
+            }
+        }
+    }
+
+    /** Issues and removes punishments. Commands and menus arrive in later steps. */
+    public PunishmentService punishments() {
+        return punishments;
+    }
+
+    public RankCache rankCache() {
+        return rankCache;
+    }
+
     public Storage storage() {
         return storage;
     }
@@ -303,6 +360,7 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
         state = updated;
         if (loaded.ranks().ok()) {
             ranks.apply(updated.ranks());
+            refreshRanks();
         }
         List<String> restartNeeded = new ArrayList<>();
         if (loaded.settings().ok() && commands.needsRestart(updated.settings())) {
@@ -310,6 +368,11 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
         }
         if (loaded.settings().ok() && !updated.settings().storage().equals(storage.settings())) {
             restartNeeded.add("storage");
+        }
+        boolean wantLuckPerms = updated.settings().luckperms()
+                && getServer().getPluginManager().isPluginEnabled("LuckPerms");
+        if (loaded.settings().ok() && wantLuckPerms != luckPermsHooked) {
+            restartNeeded.add("hooks.luckperms");
         }
 
         Messages messages = updated.messages();

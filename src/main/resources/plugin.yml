@@ -5,6 +5,8 @@ api-version: '1.21'
 author: MR Studios
 description: Staff management and punishments with automatic escalation, reports and staff tools.
 folia-supported: false
+# Loaded after LuckPerms when it is installed, so offline ranks can be read from it.
+softdepend: [LuckPerms]
 # Commands are registered with Paper's Brigadier API, so they aren't listed under "commands:".
 # Every command is also reachable as /mr-punish:<name>. The README lists them in full.
 #   mrpunish (aliases staffhelper, mrp): help, reload, version
