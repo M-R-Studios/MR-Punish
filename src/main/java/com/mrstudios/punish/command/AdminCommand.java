@@ -35,6 +35,12 @@ public final class AdminCommand {
         /** Server software and Minecraft version. */
         String serverVersion();
 
+        /** Which database, e.g. {@code SQLite (punishments.db)}. */
+        String storageDescription();
+
+        /** Whether it's connected, and why not. */
+        String storageStatus();
+
         /** The labels other plugins own instead of MR-Punish, or "none". */
         String clashSummary();
     }
@@ -116,6 +122,8 @@ public final class AdminCommand {
         admin.messages().send(sender, "admin.version",
                 Placeholder.unparsed("version", admin.pluginVersion()),
                 Placeholder.unparsed("server", admin.serverVersion()),
+                Placeholder.unparsed("storage", admin.storageDescription()),
+                Placeholder.unparsed("storage-status", admin.storageStatus()),
                 Placeholder.unparsed("clashes", admin.clashSummary()));
         return Command.SINGLE_SUCCESS;
     }

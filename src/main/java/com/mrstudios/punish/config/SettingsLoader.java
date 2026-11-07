@@ -1,6 +1,9 @@
 package com.mrstudios.punish.config;
 
 import com.mrstudios.punish.config.Settings.CommandToggle;
+import com.mrstudios.punish.config.Settings.Mysql;
+import com.mrstudios.punish.config.Settings.Storage;
+import com.mrstudios.punish.config.Settings.StorageType;
 import com.mrstudios.punish.punish.PunishmentType;
 import com.mrstudios.punish.punish.Reason;
 import com.mrstudios.punish.punish.ReasonRegistry;
@@ -33,9 +36,11 @@ public final class SettingsLoader {
     /** Permission nodes and command labels. */
     private static final Pattern PERMISSION = Pattern.compile("[a-z0-9_.-]{1,128}");
     private static final Pattern LABEL = Pattern.compile("[a-z0-9_-]{1,32}");
+    /** MySQL table prefixes: they go straight into SQL, so nothing but these characters. */
+    private static final Pattern TABLE_PREFIX = Pattern.compile("[a-z0-9_]{0,16}");
 
     private static final Set<String> TOP_LEVEL = Set.of("config-version", "escalation", "fallback-reasons", "reasons",
-            "commands");
+            "commands", "storage");
     private static final Set<String> REASON_FIELDS = Set.of("type", "display", "description", "icon", "slot", "aliases",
             "escalation", "history-period", "permission", "enabled");
     private static final Set<String> TOGGLE_FIELDS = Set.of("enabled", "aliases");
@@ -139,7 +144,30 @@ public final class SettingsLoader {
         }
 
         Map<String, CommandToggle> commands = readCommands(yaml, commandDefaults, warnings);
-        return LoadResult.loaded(new Settings(historyPeriod, registry, commands), warnings);
+        Storage storage = readStorage(yaml, r, warnings);
+        return LoadResult.loaded(new Settings(historyPeriod, registry, commands, storage), warnings);
+    }
+
+    private static Storage readStorage(YamlConfiguration yaml, YamlReader r, List<String> warnings) {
+        warnUnknownIn(yaml, "storage", Set.of("type", "sqlite", "mysql"), warnings);
+        warnUnknownIn(yaml, "storage.sqlite", Set.of("file"), warnings);
+        warnUnknownIn(yaml, "storage.mysql", Set.of("host", "port", "database", "username", "password", "table-prefix",
+                "pool-size", "properties"), warnings);
+        StorageType type = r.choice("storage.type", StorageType.class, StorageType.SQLITE);
+        String file = r.text("storage.sqlite.file", "punishments.db",
+                s -> !s.isEmpty() && !s.contains("/") && !s.contains("\\") && !s.equals(".") && !s.equals(".."),
+                "a file name without folders");
+        Mysql mysql = new Mysql(
+                r.text("storage.mysql.host", "localhost", s -> !s.isEmpty(), "a host name"),
+                r.wholeNumber("storage.mysql.port", 1, 65535, 3306),
+                r.text("storage.mysql.database", "mrpunish", s -> !s.isEmpty(), "a database name"),
+                r.text("storage.mysql.username", "mrpunish", s -> true, "text"),
+                r.text("storage.mysql.password", "", s -> true, "text"),
+                r.text("storage.mysql.table-prefix", "mrpunish_", s -> TABLE_PREFIX.matcher(s).matches(),
+                        "lower-case letters, digits and _ only, at most 16 characters"),
+                r.wholeNumber("storage.mysql.pool-size", 2, 20, 4),
+                r.properties("storage.mysql.properties", Map.of("sslMode", "PREFERRED")));
+        return new Storage(type, file, mysql);
     }
 
     private static PunishmentType type(String name) {

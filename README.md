@@ -20,6 +20,14 @@ MR-Punish creates five files in `plugins/MR-Punish/`, each with comments explain
 
 After editing, run `/mrpunish reload`. Each file reloads on its own: if one has a mistake, the reply names the file, the line and the problem, and the previous settings for that file stay in use while the others still reload. Small mistakes (an invalid value) fall back to the default for that value and are listed as warnings. A broken rank hierarchy in `permissions.yml` (two ranks with the same weight, a missing permission, an unknown or circular `inherits`) is never applied, and a `config.yml` without an enabled fallback reason for every type isn't either. If a file is broken when the server starts, its built-in defaults are used and the console says why.
 
+## Storage
+
+MR-Punish stores everything in a database: SQLite by default (`plugins/MR-Punish/punishments.db`, nothing to set up), or MySQL/MariaDB (`storage.type: MYSQL` in `config.yml`). Several servers can share one MySQL database; SQLite is for a single server and must never sit on a network share. Changing the storage type needs a restart, and data isn't copied between the two.
+
+The tables are created on first start and upgraded automatically when MR-Punish updates (SQLite gets a backup copy first; for MySQL, the console asks you to make one). A database made by a newer MR-Punish is never touched by an older one.
+
+If the database can't be reached at startup or goes away while the server runs, MR-Punish keeps running in a degraded mode. It doesn't save anything, tells online admins (`mrpunish.admin`) and every admin who joins, and tries again every 30 seconds until the database is back. `/mrpunish version` shows whether storage is connected and why not.
+
 ## Staff ranks
 
 Ranks are defined in `plugins/MR-Punish/permissions.yml`. Each rank has a permission node, a weight and a list of permissions it grants. Give staff the rank node in your permissions plugin, for example with LuckPerms:
@@ -28,7 +36,7 @@ Ranks are defined in `plugins/MR-Punish/permissions.yml`. Each rank has a permis
 /lp group mod permission set mrpunish.mod
 ```
 
-Anyone with a rank node automatically gets everything the rank grants, plus everything from the ranks it inherits. A player's rank is the heaviest rank node they have. Staff can only act on players whose rank weight is lower than their own; players without a rank have weight 0, and console can do everything. Operators get `mrpunish.owner` by default.
+Anyone with a rank node automatically gets everything the rank grants, plus everything from the ranks it inherits. A player's rank is the heaviest rank node they have. MR-Punish remembers each player's rank from their last visit, for when they're offline. Staff can only act on players whose rank weight is lower than their own; players without a rank have weight 0, and console can do everything. Operators get `mrpunish.owner` by default.
 
 ## Commands
 
@@ -38,7 +46,7 @@ MR-Punish registers its commands through Paper's command system. Every command a
 |---|---|---|
 | `/mrpunish` (aliases `/staffhelper`, `/mrp`) | `mrpunish.staff`, `mrpunish.reload` or `mrpunish.admin` | Help, listing only the commands you can use. |
 | `/mrpunish reload` | `mrpunish.reload` | Reloads all five files and reports what failed and why. |
-| `/mrpunish version` | `mrpunish.admin` | Plugin and server version, and any command labels owned by other plugins. |
+| `/mrpunish version` | `mrpunish.admin` | Plugin and server version, storage and whether it's connected, and any command labels owned by other plugins. |
 
 ## Permissions
 

@@ -111,6 +111,46 @@ final class YamlReader {
         return fallback;
     }
 
+    <E extends Enum<E>> E choice(String path, Class<E> type, E def) {
+        Object value = value(path, def);
+        if (value == null) {
+            return def;
+        }
+        if (value instanceof String s) {
+            for (E option : type.getEnumConstants()) {
+                if (option.name().equalsIgnoreCase(s.strip())) {
+                    return option;
+                }
+            }
+        }
+        String options = java.util.Arrays.stream(type.getEnumConstants()).map(Enum::name)
+                .collect(java.util.stream.Collectors.joining(" or "));
+        invalid(path, value, options, def);
+        return def;
+    }
+
+    /** A section of name: value pairs (free-form names). */
+    java.util.Map<String, String> properties(String path, java.util.Map<String, String> def) {
+        Object value = value(path, def);
+        if (value == null) {
+            return def;
+        }
+        if (!(value instanceof ConfigurationSection section)) {
+            invalid(path, value, "a list of name: value pairs", def);
+            return def;
+        }
+        java.util.Map<String, String> properties = new java.util.LinkedHashMap<>();
+        for (String key : section.getKeys(false)) {
+            Object entry = section.get(key);
+            if (isScalar(entry)) {
+                properties.put(key, entry.toString());
+            } else {
+                warnings.add(full(path) + "." + key + ": '" + entry + "' is not a single value, skipped");
+            }
+        }
+        return properties;
+    }
+
     /** A list of single values as text; anything else in the list is skipped with a warning. */
     List<String> textList(String path, List<String> def) {
         Object value = value(path, def);

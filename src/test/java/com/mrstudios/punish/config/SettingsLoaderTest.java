@@ -288,4 +288,29 @@ class SettingsLoaderTest {
         LoadResult<Settings> result = loader().load(edited("commands: {}", "commands:\n  ban: { enabled: false }"));
         assertTrue(has(result, "commands.ban is not an MR-Punish command that can be turned off"));
     }
+
+    @Test
+    void storageDefaultsAndValidation() {
+        Settings settings = loader().load(bundledText()).value();
+        assertEquals(Settings.StorageType.SQLITE, settings.storage().type());
+        assertEquals("punishments.db", settings.storage().sqliteFile());
+        assertEquals("mrpunish_", settings.storage().mysql().tablePrefix());
+        assertEquals(4, settings.storage().mysql().poolSize());
+        assertEquals(java.util.Map.of("sslMode", "PREFERRED"), settings.storage().mysql().properties());
+
+        LoadResult<Settings> bad = loader().load(edited("table-prefix: \"mrpunish_\"", "table-prefix: \"x; DROP\"")
+                .replace("pool-size: 4", "pool-size: 50")
+                .replace("file: punishments.db", "file: ../evil.db")
+                .replace("type: SQLITE", "type: POSTGRES"));
+        assertTrue(bad.ok(), bad.error());
+        assertTrue(has(bad, "storage.mysql.table-prefix: 'x; DROP' is not lower-case letters"), bad.warnings().toString());
+        assertTrue(has(bad, "storage.mysql.pool-size: '50' is not a whole number from 2 to 20"));
+        assertTrue(has(bad, "storage.sqlite.file: '../evil.db' is not a file name without folders"));
+        assertTrue(has(bad, "storage.type: 'POSTGRES' is not SQLITE or MYSQL"));
+        assertEquals("mrpunish_", bad.value().storage().mysql().tablePrefix());
+        assertEquals("punishments.db", bad.value().storage().sqliteFile());
+
+        LoadResult<Settings> typo = loader().load(edited("    pool-size: 4", "    pool-size: 4\n    poolsize: 4"));
+        assertTrue(has(typo, "storage.mysql.poolsize is not a known setting"));
+    }
 }

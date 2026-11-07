@@ -54,6 +54,16 @@ class AdminCommandTest {
             }
 
             @Override
+            public String storageDescription() {
+                return "SQLite (punishments.db)";
+            }
+
+            @Override
+            public String storageStatus() {
+                return "connected";
+            }
+
+            @Override
             public String clashSummary() {
                 return "none";
             }
@@ -128,7 +138,7 @@ class AdminCommandTest {
     void versionShowsPluginServerAndClashes() {
         PlayerMock admin = player(Perms.ADMIN);
         command.version(admin);
-        assertEquals(List.of("MR-Punish » MR-Punish 0.1 on Paper 1.21.11. Clashes: none"), messages(admin));
+        assertEquals(List.of("MR-Punish » MR-Punish 0.1 on Paper 1.21.11. Storage: SQLite (punishments.db) (connected). Clashes: none"), messages(admin));
         assertNull(admin.nextComponentMessage());
     }
 

@@ -10,8 +10,10 @@ import java.util.Map;
  * @param historyPeriod how far back earlier offences count for escalation, unless a reason sets its own
  * @param reasons       every punishment reason and the fallback for each type
  * @param commands      the on/off switch and extra labels of each command that has one, by name
+ * @param storage       where punishments are stored (read once at startup; changing it needs a restart)
  */
-public record Settings(TimeSpan historyPeriod, ReasonRegistry reasons, Map<String, CommandToggle> commands) {
+public record Settings(TimeSpan historyPeriod, ReasonRegistry reasons, Map<String, CommandToggle> commands,
+        Storage storage) {
 
     public Settings {
         commands = Map.copyOf(commands);
@@ -29,6 +31,34 @@ public record Settings(TimeSpan historyPeriod, ReasonRegistry reasons, Map<Strin
 
         public CommandToggle {
             aliases = List.copyOf(aliases);
+        }
+    }
+
+    public enum StorageType {
+        SQLITE,
+        MYSQL
+    }
+
+    /** @param sqliteFile a file name inside the plugin folder */
+    public record Storage(StorageType type, String sqliteFile, Mysql mysql) {
+    }
+
+    /**
+     * @param tablePrefix put in front of every table name
+     * @param properties  extra JDBC connection properties
+     */
+    public record Mysql(String host, int port, String database, String username, String password,
+            String tablePrefix, int poolSize, Map<String, String> properties) {
+
+        public Mysql {
+            properties = Map.copyOf(properties);
+        }
+
+        @Override
+        public String toString() {
+            // Keeps the password out of logs and error reports.
+            return "Mysql[host=" + host + ", port=" + port + ", database=" + database + ", username=" + username
+                    + ", tablePrefix=" + tablePrefix + ", poolSize=" + poolSize + ", properties=" + properties + "]";
         }
     }
 

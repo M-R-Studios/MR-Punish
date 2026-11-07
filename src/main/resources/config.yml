@@ -245,3 +245,29 @@ reasons:
 # Entries appear here as the commands they belong to are added to MR-Punish. /mrpunish itself
 # (aliases /staffhelper and /mrp) is always on.
 commands: {}
+
+storage:
+  # SQLITE (a file in plugins/MR-Punish/) or MYSQL (also MariaDB). Changing this needs a restart.
+  # Data isn't copied between them. Several servers can share one MySQL database; SQLite is for
+  # one server only.
+  type: SQLITE
+  sqlite:
+    # File name inside plugins/MR-Punish/.
+    file: punishments.db
+  mysql:
+    # Address and port of the MySQL or MariaDB server.
+    host: localhost
+    port: 3306
+    # The database (schema) to use. It must already exist.
+    database: mrpunish
+    # Login for the database.
+    username: mrpunish
+    password: ""
+    # Prefix for table names, so MR-Punish can share a database with other plugins.
+    # Lower-case letters, digits and _ only, at most 16 characters.
+    table-prefix: "mrpunish_"
+    # Maximum open connections. Range 2-20.
+    pool-size: 4
+    # Extra JDBC connection properties.
+    properties:
+      sslMode: PREFERRED

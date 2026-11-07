@@ -23,7 +23,7 @@ public final class MessagesLoader {
      * Messages not listed take none.
      */
     private static final Map<String, Set<String>> PLACEHOLDERS = Map.ofEntries(
-            Map.entry("admin.version", Set.of("version", "server", "clashes")),
+            Map.entry("admin.version", Set.of("version", "server", "storage", "storage-status", "clashes")),
             Map.entry("admin.reload-warnings", Set.of("count")),
             Map.entry("admin.reload-failed", Set.of("file")),
             Map.entry("admin.reload-detail", Set.of("detail")),
