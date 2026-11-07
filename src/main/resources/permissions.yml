@@ -1,0 +1,63 @@
+# MR-Punish staff ranks.
+# A player's rank is the rank with the highest weight whose permission they have. Give staff
+# these permissions in your permissions plugin (e.g. LuckPerms: /lp group mod permission set mrpunish.mod).
+# A rank's "grants" are given automatically to anyone with that rank's permission. Ranks inherit
+# everything from lower ranks listed in "inherits".
+# Staff can only punish, freeze or force-exit players whose rank weight is LOWER than their own.
+# Players without any rank have weight 0. Console can do everything.
+
+# Do not change. Used to upgrade this file automatically when the plugin updates.
+permissions-version: 1
+
+ranks:
+  helper:
+    # The permission that gives this rank.
+    permission: mrpunish.helper
+    # Higher = more authority. Whole number, 1-1000, unique per rank.
+    weight: 10
+    # The rank's name as shown to players (MiniMessage).
+    display: "<green>Helper"
+    # Lower ranks whose grants this rank gets too.
+    inherits: []
+    # Permissions everyone with this rank gets.
+    grants:
+      - mrpunish.staff
+      - mrpunish.punish
+      - mrpunish.warn
+      - mrpunish.mute
+      - mrpunish.history
+      - mrpunish.notify
+      - mrpunish.reports
+      - mrpunish.report.nocooldown
+      - mrpunish.staffchat
+      - mrpunish.staffmode
+      - mrpunish.vanish
+      - mrpunish.vanish.see
+  mod:
+    permission: mrpunish.mod
+    weight: 20
+    display: "<aqua>Moderator"
+    inherits: [helper]
+    grants:
+      - mrpunish.ban
+      - mrpunish.freeze
+      - mrpunish.invsee
+      - mrpunish.endersee
+  admin:
+    permission: mrpunish.admin
+    weight: 30
+    display: "<red>Administrator"
+    inherits: [mod]
+    grants:
+      - mrpunish.ip
+      - mrpunish.remove
+      - mrpunish.vanish.others
+      - mrpunish.logs
+      - mrpunish.reload
+  owner:
+    permission: mrpunish.owner
+    weight: 40
+    display: "<dark_red>Owner"
+    inherits: [admin]
+    grants:
+      - mrpunish.import

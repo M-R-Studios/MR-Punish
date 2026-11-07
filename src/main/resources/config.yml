@@ -1,5 +1,247 @@
 # MR-Punish configuration
 # Every option is documented here. After editing, run /mrpunish reload.
+# Durations use s (seconds), m (minutes), h (hours), d (days), w (weeks), mo (months of 30 days)
+# and y (years of 365 days), and can be combined, e.g. "1d12h". "permanent" never expires.
 
 # Do not change. Used to upgrade this file automatically when the plugin updates.
 config-version: 1
+
+escalation:
+  # How far back previous punishments of the same type and reason are counted when working out
+  # the next escalation step. A reason can override this with its own history-period.
+  # Removed punishments never count. Replaced and expired ones do.
+  history-period: 90d
+
+# The fallback reason for each type. It's used when a command's reason doesn't match any configured
+# reason or alias, and the whole typed text then becomes the staff note. Each must name an enabled
+# reason of that type below.
+fallback-reasons:
+  WARN: other-warn
+  MUTE: other-mute
+  BAN: other-ban
+  IP_MUTE: other-ipmute
+  IP_BAN: other-ipban
+
+# Punishment reasons. Each key is a unique ID stored in history. Don't rename a key that's already
+# in use, or old punishments will stop counting towards its escalation.
+#   type:           WARN, MUTE, BAN, IP_MUTE or IP_BAN.
+#   display:        name shown in GUIs, messages and the ban screen (MiniMessage).
+#   description:    lore lines in the reason GUI.
+#   icon:           item material in the reason GUI.
+#   slot:           optional fixed slot in the reason GUI. Reasons without one fill the free slots in order.
+#   aliases:        other words that pick this reason in commands (case-insensitive). Aliases only
+#                   need to be unique within one type, so /warn x spam and /mute x spam can pick
+#                   different reasons.
+#   escalation:     durations for the 1st, 2nd, 3rd... offence. After the last step, the last step
+#                   repeats. Not used for WARN.
+#   history-period: optional. Overrides escalation.history-period for this reason.
+#   permission:     optional extra permission needed to use this reason (on top of the type's).
+#   enabled:        false hides the reason from GUIs and commands. Its history stays.
+reasons:
+  # ---- Warnings ----
+  spam-warn:
+    type: WARN
+    display: "Spam"
+    description: ["<gray>Repeated or flooding messages."]
+    icon: PAPER
+    aliases: [spam, spamming, flood]
+  toxicity-warn:
+    type: WARN
+    display: "Toxicity"
+    description: ["<gray>Rude or hostile behaviour."]
+    icon: PAPER
+    aliases: [toxicity, toxic, rude]
+  advertising-warn:
+    type: WARN
+    display: "Advertising"
+    description: ["<gray>Mentioning other servers or services."]
+    icon: PAPER
+    aliases: [advertising, ad, ads]
+  inappropriate-warn:
+    type: WARN
+    display: "Inappropriate Behaviour"
+    description: ["<gray>Behaviour that breaks the rules."]
+    icon: PAPER
+    aliases: [inappropriate, behaviour, behavior]
+  other-warn:
+    type: WARN
+    display: "Other"
+    description: ["<gray>Anything else. Add a note."]
+    icon: BOOK
+    aliases: [other]
+
+  # ---- Mutes ----
+  spam:
+    type: MUTE
+    display: "Spam"
+    description: ["<gray>Repeated or flooding messages."]
+    icon: PAPER
+    aliases: [spamming, flood]
+    escalation: ["10m", "30m", "2h", "1d"]
+  toxicity:
+    type: MUTE
+    display: "Toxicity"
+    description: ["<gray>Rude or hostile behaviour."]
+    icon: BLAZE_POWDER
+    aliases: [toxic, rude]
+    escalation: ["2h", "1d", "7d", "30d", "permanent"]
+  harassment:
+    type: MUTE
+    display: "Harassment"
+    description: ["<gray>Targeting another player."]
+    icon: IRON_SWORD
+    aliases: [harass, bullying]
+    escalation: ["1d", "7d", "30d", "permanent"]
+  discrimination:
+    type: MUTE
+    display: "Discrimination"
+    description: ["<gray>Slurs, hate speech or discrimination."]
+    icon: BARRIER
+    aliases: [racism, hate, slur]
+    escalation: ["7d", "30d", "permanent"]
+  advertising:
+    type: MUTE
+    display: "Advertising"
+    description: ["<gray>Mentioning other servers or services."]
+    icon: OAK_SIGN
+    aliases: [ad, ads]
+    escalation: ["1h", "1d", "7d", "permanent"]
+  inappropriate:
+    type: MUTE
+    display: "Inappropriate Behaviour"
+    description: ["<gray>Inappropriate messages."]
+    icon: ROTTEN_FLESH
+    aliases: [behaviour, behavior]
+    escalation: ["30m", "2h", "1d", "7d"]
+  other-mute:
+    type: MUTE
+    display: "Other"
+    description: ["<gray>Anything else. Add a note."]
+    icon: BOOK
+    aliases: [other]
+    escalation: ["1h", "1d", "7d"]
+
+  # ---- Bans ----
+  hacking:
+    type: BAN
+    display: "Hacking"
+    description: ["<gray>Cheat clients, x-ray, kill aura, fly..."]
+    icon: DIAMOND_SWORD
+    aliases: [hacks, cheating, cheats, xray]
+    escalation: ["7d", "30d", "permanent"]
+  exploiting:
+    type: BAN
+    display: "Exploiting"
+    description: ["<gray>Abusing bugs or duplication glitches."]
+    icon: TNT
+    aliases: [exploit, dupe, duping, bug]
+    escalation: ["3d", "14d", "permanent"]
+  griefing:
+    type: BAN
+    display: "Griefing"
+    description: ["<gray>Destroying or stealing other players' builds."]
+    icon: FLINT_AND_STEEL
+    aliases: [grief]
+    escalation: ["3d", "14d", "60d", "permanent"]
+  scamming:
+    type: BAN
+    display: "Scamming"
+    description: ["<gray>Tricking players out of items or money."]
+    icon: GOLD_INGOT
+    aliases: [scam]
+    escalation: ["7d", "30d", "permanent"]
+  harassment-ban:
+    type: BAN
+    display: "Harassment"
+    description: ["<gray>Severe or repeated harassment."]
+    icon: IRON_SWORD
+    aliases: [harassment, harass]
+    escalation: ["3d", "30d", "permanent"]
+  discrimination-ban:
+    type: BAN
+    display: "Discrimination"
+    description: ["<gray>Severe or repeated discrimination."]
+    icon: BARRIER
+    aliases: [discrimination, racism, hate]
+    escalation: ["7d", "permanent"]
+  advertising-ban:
+    type: BAN
+    display: "Advertising"
+    description: ["<gray>Advertising bots or repeated advertising."]
+    icon: OAK_SIGN
+    aliases: [advertising, ad, ads]
+    escalation: ["7d", "permanent"]
+  inappropriate-ban:
+    type: BAN
+    display: "Inappropriate Behaviour"
+    description: ["<gray>Inappropriate builds, skins or names."]
+    icon: ROTTEN_FLESH
+    aliases: [inappropriate, behaviour, behavior]
+    escalation: ["1d", "7d", "30d"]
+  freeze-logout:
+    type: BAN
+    display: "Logging out while frozen"
+    description: ["<gray>Used by freeze.on-quit: BAN."]
+    icon: PACKED_ICE
+    aliases: [frozenlogout, logout]
+    escalation: ["7d", "30d", "permanent"]
+  other-ban:
+    type: BAN
+    display: "Other"
+    description: ["<gray>Anything else. Add a note."]
+    icon: BOOK
+    aliases: [other]
+    escalation: ["1d", "7d", "30d"]
+
+  # ---- IP mutes (only used when ip.enabled is true) ----
+  spam-ip:
+    type: IP_MUTE
+    display: "Spam (alts)"
+    description: ["<gray>Spamming from several accounts."]
+    icon: PAPER
+    aliases: [spam, spamming]
+    escalation: ["1d", "7d", "permanent"]
+  advertising-ip:
+    type: IP_MUTE
+    display: "Advertising (alts)"
+    description: ["<gray>Advertising from several accounts."]
+    icon: OAK_SIGN
+    aliases: [advertising, ad, ads]
+    escalation: ["7d", "permanent"]
+  other-ipmute:
+    type: IP_MUTE
+    display: "Other"
+    description: ["<gray>Anything else. Add a note."]
+    icon: BOOK
+    aliases: [other]
+    escalation: ["1d", "7d", "30d"]
+
+  # ---- IP bans (only used when ip.enabled is true) ----
+  ban-evasion:
+    type: IP_BAN
+    display: "Ban evasion"
+    description: ["<gray>Joining on another account while banned."]
+    icon: ENDER_EYE
+    aliases: [evasion, evading, alt]
+    escalation: ["30d", "permanent"]
+  hacking-ip:
+    type: IP_BAN
+    display: "Hacking (alts)"
+    description: ["<gray>Cheating on several accounts."]
+    icon: DIAMOND_SWORD
+    aliases: [hacking, hacks, cheating]
+    escalation: ["30d", "permanent"]
+  other-ipban:
+    type: IP_BAN
+    display: "Other"
+    description: ["<gray>Anything else. Add a note."]
+    icon: BOOK
+    aliases: [other]
+    escalation: ["7d", "30d"]
+
+# Turn MR-Punish commands off so that another plugin or vanilla gets that label instead, and add
+# extra labels. The namespaced form (e.g. /mr-punish:ban) always works. Changing these needs a restart.
+# Each entry looks like:  ban: { enabled: true, aliases: [] }
+# Entries appear here as the commands they belong to are added to MR-Punish. /mrpunish itself
+# (aliases /staffhelper and /mrp) is always on.
+commands: {}

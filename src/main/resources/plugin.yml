@@ -5,3 +5,96 @@ api-version: '1.21'
 author: MR Studios
 description: Staff management and punishments with automatic escalation, reports and staff tools.
 folia-supported: false
+# Commands are registered with Paper's Brigadier API, so they aren't listed under "commands:".
+# Every command is also reachable as /mr-punish:<name>. The README lists them in full.
+#   mrpunish (aliases staffhelper, mrp): help, reload, version
+permissions:
+  # Rank nodes. What each rank grants is set in plugins/MR-Punish/permissions.yml.
+  mrpunish.helper:
+    description: "Helper rank. What it grants is set in plugins/MR-Punish/permissions.yml."
+    default: false
+  mrpunish.mod:
+    description: "Moderator rank. What it grants is set in plugins/MR-Punish/permissions.yml."
+    default: false
+  mrpunish.admin:
+    description: "Administrator rank, and admin tools (/mrpunish version). What it grants is set in plugins/MR-Punish/permissions.yml."
+    default: false
+  mrpunish.owner:
+    description: "Owner rank. What it grants is set in plugins/MR-Punish/permissions.yml."
+    default: op
+  mrpunish.exempt:
+    description: "Can only be punished, frozen or forced out of staff mode by console."
+    default: false
+  # Features. Ranks grant these through permissions.yml.
+  mrpunish.staff:
+    description: "Base staff permission: /mrpunish help, the staff hub and staff notifications."
+    default: false
+  mrpunish.punish:
+    description: "Use the /punish menu."
+    default: false
+  mrpunish.warn:
+    description: "Warn players."
+    default: false
+  mrpunish.mute:
+    description: "Mute players."
+    default: false
+  mrpunish.ban:
+    description: "Ban players."
+    default: false
+  mrpunish.ip:
+    description: "IP mutes and IP bans (together with mrpunish.mute or mrpunish.ban)."
+    default: false
+  mrpunish.remove:
+    description: "Remove punishments."
+    default: false
+  mrpunish.history:
+    description: "View punishment history."
+    default: false
+  mrpunish.notify:
+    description: "Receive punishment and removal notifications."
+    default: false
+  mrpunish.staffchat:
+    description: "Use staff chat."
+    default: false
+  mrpunish.staffmode:
+    description: "Use staff mode."
+    default: false
+  mrpunish.vanish:
+    description: "Vanish yourself."
+    default: false
+  mrpunish.vanish.others:
+    description: "Vanish or unvanish other players."
+    default: false
+  mrpunish.vanish.see:
+    description: "See vanished players of your rank or lower."
+    default: false
+  mrpunish.freeze:
+    description: "Freeze and unfreeze players."
+    default: false
+  mrpunish.invsee:
+    description: "View players' inventories."
+    default: false
+  mrpunish.endersee:
+    description: "View players' ender chests."
+    default: false
+  mrpunish.reports:
+    description: "View and handle reports."
+    default: false
+  mrpunish.report:
+    description: "Report players."
+    default: true
+  mrpunish.report.nocooldown:
+    description: "Ignore the report cooldown."
+    default: false
+  mrpunish.stafflist:
+    description: "Use /stafflist."
+    default: true
+  mrpunish.logs:
+    description: "View the staff action log."
+    default: false
+  mrpunish.reload:
+    description: "Use /mrpunish reload."
+    default: false
+  mrpunish.import:
+    description: "Import the vanilla ban lists."
+    default: false

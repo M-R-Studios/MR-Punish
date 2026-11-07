@@ -1,0 +1,6 @@
+# MR-Punish GUIs. Every title, slot, item, name, lore line and sound can be changed.
+# Names and lore use MiniMessage. Slots are 0-based (row * 9 + column).
+# The menus' settings appear here as the menus are added to MR-Punish.
+
+# Do not change. Used to upgrade this file automatically when the plugin updates.
+gui-version: 1

@@ -1,0 +1,27 @@
+# MR-Punish messages. MiniMessage format: https://docs.advntr.dev/minimessage/format
+# <prefix> inserts the prefix below into any message. Set a message to "" to send nothing.
+
+# Do not change. Used to upgrade this file automatically when the plugin updates.
+messages-version: 1
+
+prefix: "<gradient:#ef4444:#f97316>MR-Punish</gradient> <dark_gray>»</dark_gray> "
+
+general:
+  no-permission: "<prefix><red>You don't have permission to do that."
+
+admin:
+  # /mrpunish help. Each command's line is only shown to senders who may use it.
+  help-header: "<prefix><white>MR-Punish commands:"
+  help:
+    reload: "<prefix><white>/mrpunish reload</white> <gray>- reload all configuration files"
+    version: "<prefix><white>/mrpunish version</white> <gray>- version and command clashes"
+  # Shown instead when the sender can't use any of the commands above.
+  help-none: "<prefix><gray>There are no MR-Punish commands you can use."
+  # <version>: MR-Punish version. <server>: server software and Minecraft version.
+  # <clashes>: command labels another plugin owns instead of MR-Punish, or "none".
+  version: "<prefix><gray>MR-Punish <white><version></white> on <white><server></white>. Clashes: <white><clashes></white>"
+  reload-success: "<prefix><green>Reloaded config.yml, messages.yml, gui.yml, permissions.yml and scoreboard.yml."
+  reload-warnings: "<prefix><yellow>Reloaded with <count> warning(s):"
+  reload-failed: "<prefix><red>Reload failed for <file>; kept the previous settings for it:"
+  reload-detail: "<gray> - <detail>"
+  reload-restart-needed: "<prefix><yellow>These changes need a restart to apply: <what>"
