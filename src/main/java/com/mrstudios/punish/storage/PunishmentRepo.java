@@ -181,6 +181,90 @@ public final class PunishmentRepo {
         }
     }
 
+    /** The status filter of the history menu (DESIGN.md 10.5); EXPIRED and ACTIVE use the time. */
+    public enum StatusFilter {
+        ALL, ACTIVE, EXPIRED, REMOVED, REPLACED
+    }
+
+    /** @param type null for every type */
+    public record HistoryFilter(PunishmentType type, StatusFilter status) {
+
+        public static final HistoryFilter ALL = new HistoryFilter(null, StatusFilter.ALL);
+    }
+
+    /**
+     * The history of an account: punishments issued to it, plus IP punishments on any of
+     * {@code hashes} (the IPs it was seen with, DESIGN.md 8.2). Filtering happens in SQL.
+     */
+    private String historyWhere(Collection<String> hashes, HistoryFilter filter, List<Object> params, UUID uuid,
+            long now) {
+        StringBuilder where = new StringBuilder(" WHERE (target_uuid = ?");
+        params.add(uuid.toString());
+        if (!hashes.isEmpty()) {
+            where.append(" OR ip_hash IN (").append(String.join(", ", java.util.Collections.nCopies(hashes.size(), "?")))
+                    .append(")");
+            params.addAll(hashes);
+        }
+        where.append(")");
+        if (filter.type() != null) {
+            where.append(" AND type = ?");
+            params.add(filter.type().name());
+        }
+        switch (filter.status()) {
+            case ACTIVE -> {
+                where.append(" AND status = 'ACTIVE' AND (expires_at IS NULL OR expires_at > ?)");
+                params.add(now);
+            }
+            case EXPIRED -> {
+                where.append(" AND status = 'ACTIVE' AND expires_at IS NOT NULL AND expires_at <= ?");
+                params.add(now);
+            }
+            case REMOVED -> where.append(" AND status = 'REMOVED'");
+            case REPLACED -> where.append(" AND status = 'REPLACED'");
+            case ALL -> { }
+        }
+        return where.toString();
+    }
+
+    private static void bind(PreparedStatement s, List<Object> params) throws SQLException {
+        for (int i = 0; i < params.size(); i++) {
+            Object v = params.get(i);
+            if (v instanceof Long l) {
+                s.setLong(i + 1, l);
+            } else if (v instanceof Integer n) {
+                s.setInt(i + 1, n);
+            } else {
+                s.setString(i + 1, (String) v);
+            }
+        }
+    }
+
+    public int countHistory(Connection c, UUID uuid, Collection<String> hashes, HistoryFilter filter, long now)
+            throws SQLException {
+        List<Object> params = new ArrayList<>();
+        String sql = "SELECT COUNT(*) FROM " + table() + historyWhere(hashes, filter, params, uuid, now);
+        try (PreparedStatement s = c.prepareStatement(sql)) {
+            bind(s, params);
+            try (ResultSet r = s.executeQuery()) {
+                return r.next() ? r.getInt(1) : 0;
+            }
+        }
+    }
+
+    /** One page of the history, newest first. */
+    public List<Punishment> history(Connection c, UUID uuid, Collection<String> hashes, HistoryFilter filter, long now,
+            int offset, int limit) throws SQLException {
+        List<Object> params = new ArrayList<>();
+        String sql = "SELECT " + COLUMNS + " FROM " + table() + historyWhere(hashes, filter, params, uuid, now)
+                + " ORDER BY id DESC LIMIT ? OFFSET ?";
+        params.add(limit);
+        params.add(offset);
+        try (PreparedStatement s = c.prepareStatement(sql)) {
+            bind(s, params);
+            return list(s);
+        }
+    }
+
     /** Marks {@code ids} REPLACED by {@code replacement}. Only rows still ACTIVE change. */
     public int markReplaced(Connection c, Collection<Long> ids, long replacement, long at) throws SQLException {
         if (ids.isEmpty()) {

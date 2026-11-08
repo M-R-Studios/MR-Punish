@@ -250,7 +250,7 @@ public final class PunishCommands {
         }
     }
 
-    void report(CommandSender sender, Requests.Remove request, RemoveResult result) {
+    public void report(CommandSender sender, Requests.Remove request, RemoveResult result) {
         Messages m = messages();
         String player = request.target().name();
         String type = m.raw("types." + request.type().name());

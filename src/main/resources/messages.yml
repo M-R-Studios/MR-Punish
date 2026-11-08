@@ -59,7 +59,27 @@ input:
   too-long: "<prefix><red>That's too long (max <max> characters). Try again."
   empty: "<prefix><red>That was empty. Try again or type <cancel-word>."
   form-title-note: "Note"
+  form-title-reason: "Removal reason"
   form-label: "Type here"
+
+# A punishment's status as shown in /history (menu and console).
+status:
+  ACTIVE: "<green>Active"
+  EXPIRED: "<gray>Expired"
+  REMOVED: "<aqua>Removed"
+  REPLACED: "<yellow>Replaced"
+  NOT_ENFORCED: "<dark_gray>Not enforced (IP features off)"
+
+# /history
+history:
+  # Console: a header, then one line per punishment (10 per page).
+  console-header: "<prefix><white><player></white><gray>: <total> punishment(s), page <page>/<pages>"
+  console-line: "<gray>#<id> <white><type></white> <reason> <gray><date> <duration> by <staff> <status>"
+  empty: "<prefix><gray><player> has no punishments."
+  # Asked before removing a punishment from the history menu. Typing - removes it without a reason.
+  remove-prompt: "<prefix><gray>Type a removal reason for #<id> in chat (<white>-</white> for none), or <white><cancel-word></white>."
+  # The punishment isn't active any more (expired, replaced or removed meanwhile).
+  not-active: "<prefix><red>#<id> isn't active, so it can't be removed."
 
 # Sent to the punished player
 target:

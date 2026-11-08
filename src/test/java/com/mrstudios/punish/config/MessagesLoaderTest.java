@@ -23,7 +23,7 @@ class MessagesLoaderTest {
     /** The shipped messages.yml exactly as written. */
     private static String bundledText() {
         try (var in = MessagesLoaderTest.class.getResourceAsStream("/messages.yml")) {
-            return new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+            return new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8).replace(String.valueOf((char) 13), "");
         } catch (java.io.IOException e) {
             throw new IllegalStateException(e);
         }

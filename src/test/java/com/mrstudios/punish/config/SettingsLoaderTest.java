@@ -15,7 +15,7 @@ class SettingsLoaderTest {
 
     /** Any material is an item except names starting with NOT_. */
     /** The commands the plugin ships that config.yml can switch. */
-    static final List<String> SHIPPED_COMMANDS = List.of("punish", "ban", "unban", "warn", "unwarn", "mute", "unmute",
+    static final List<String> SHIPPED_COMMANDS = List.of("punish", "history", "ban", "unban", "warn", "unwarn", "mute", "unmute",
             "muteip", "banip", "unmuteip", "unbanip");
 
     private static SettingsLoader loader() {
@@ -30,7 +30,7 @@ class SettingsLoaderTest {
     /** The shipped config.yml exactly as written. */
     static String bundledText() {
         try (var in = SettingsLoaderTest.class.getResourceAsStream("/config.yml")) {
-            return new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+            return new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8).replace(String.valueOf((char) 13), "");
         } catch (java.io.IOException e) {
             throw new IllegalStateException(e);
         }
@@ -266,6 +266,7 @@ class SettingsLoaderTest {
         String text = edited("""
                 commands:
                   punish: { enabled: true, aliases: [p] }
+                  history: { enabled: true, aliases: [hist] }
                   ban:   { enabled: true, aliases: [] }
                   unban: { enabled: true, aliases: [] }
                   warn:   { enabled: true, aliases: [] }

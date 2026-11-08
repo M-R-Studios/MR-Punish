@@ -334,6 +334,7 @@ bedrock:
 # (aliases /staffhelper and /mrp) is always on.
 commands:
   punish: { enabled: true, aliases: [p] }
+  history: { enabled: true, aliases: [hist] }
   ban:   { enabled: true, aliases: [] }
   unban: { enabled: true, aliases: [] }
   warn:   { enabled: true, aliases: [] }

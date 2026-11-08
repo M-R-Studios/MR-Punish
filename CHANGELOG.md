@@ -28,5 +28,9 @@
 - Notes for the punish menus are typed in chat, or in a form for Bedrock players when Floodgate is installed (`bedrock.floodgate`).
 - `gui.yml` now lays out every menu: titles, slots, items, lore, sounds and how buttons without permission look (`no-permission.mode`).
 
+- `/history <player> [page]` (alias `/hist`) and a History button in `/punish`: every punishment of the player, 45 a page, coloured by status, with type and status filters and a details view. IP punishments on the player's recent IPs are included (never showing the IP). Console gets a text list.
+- Removing a punishment from the history (right-click, or Remove in the details) with a typed reason; only active punishments, and only by staff ranked at least as high as whoever issued it. Removed entries stay in the history.
+- The `/punish` head now counts IP punishments on the player's recent IPs too.
+
 ### Changed
 - `/mute` and `/ban` (and `/muteip`, `/banip`) from a player now open the confirmation menu instead of applying straight away; without a reason, `/warn`, `/mute` and `/ban` open the reason menu. Console is unchanged.

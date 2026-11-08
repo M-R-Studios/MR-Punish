@@ -15,7 +15,7 @@ class GuiLoaderTest {
 
     private static String resource(String name) throws IOException {
         try (InputStream in = GuiLoaderTest.class.getResourceAsStream("/" + name)) {
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+            return new String(in.readAllBytes(), StandardCharsets.UTF_8).replace(String.valueOf((char) 13), "");
         }
     }
 

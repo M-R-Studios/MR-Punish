@@ -21,7 +21,6 @@ import com.mrstudios.punish.punish.TargetResolver;
 import com.mrstudios.punish.rank.Authority;
 import com.mrstudios.punish.rank.Rank;
 import com.mrstudios.punish.storage.PlayerRepo;
-import com.mrstudios.punish.storage.PunishmentRepo;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
@@ -315,6 +314,27 @@ public final class PunishMenus {
                 String count = data == null ? "…" : String.valueOf(active.getOrDefault(type, 0));
                 set(slot, items.build(shown, Placeholder.unparsed("active", count)), (p, click) -> category(p, type));
             }
+            ItemTemplate history = g.item("punish-menu.history");
+            int historySlot = g.number("punish-menu.history.slot");
+            Player who = plugin.getServer().getPlayer(viewer());
+            if (who == null || !who.hasPermission(HistoryMenus.PERMISSION)) {
+                ItemStack grey = noPermission(history);
+                if (grey != null) {
+                    set(historySlot, grey, (p, click) -> denied(p, "general.no-permission"));
+                }
+            } else {
+                String total = data == null ? "…" : String.valueOf(data.punishments().size());
+                set(historySlot, items.build(history, Placeholder.unparsed("total", total)), (p, click) -> {
+                    if (!p.hasPermission(HistoryMenus.PERMISSION)) {
+                        denied(p, "general.no-permission");
+                        render();
+                        return;
+                    }
+                    sound(p, "click");
+                    plugin.history().open(p, new HistoryMenus.View(flow.targetUuid, flow.targetName, 0,
+                            back -> openMain(back, flow)));
+                });
+            }
             set(g.number("punish-menu.close-slot"), items.build(g.item("common.close"), TagResolver.empty()),
                     (p, click) -> {
                         sound(p, "click");
@@ -351,7 +371,7 @@ public final class PunishMenus {
             UUID target = flow.targetUuid;
             plugin.storage().executor().submit("loading the punish menu for " + flow.targetName, c -> new HeadData(
                     new PlayerRepo(plugin.storage().database()).byUuid(c, target),
-                    new PunishmentRepo(plugin.storage().database()).ofTarget(c, target)))
+                    plugin.history().all(c, target, System.currentTimeMillis())))
                     .whenComplete((loaded, error) -> plugin.getServer().getScheduler().runTask(plugin, () -> {
                         loading = false;
                         if (error != null) {

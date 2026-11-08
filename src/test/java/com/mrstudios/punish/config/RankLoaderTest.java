@@ -20,7 +20,7 @@ class RankLoaderTest {
 
     private static String shipped() {
         try (InputStream in = RankLoaderTest.class.getResourceAsStream("/permissions.yml")) {
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+            return new String(in.readAllBytes(), StandardCharsets.UTF_8).replace(String.valueOf((char) 13), "");
         } catch (IOException e) {
             throw new IllegalStateException(e);
         }

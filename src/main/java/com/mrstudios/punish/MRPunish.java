@@ -23,9 +23,11 @@ import com.mrstudios.punish.rank.OfflineRanks;
 import com.mrstudios.punish.rank.RankCache;
 import com.mrstudios.punish.rank.RankRegistrar;
 import com.mrstudios.punish.command.PunishCommand;
+import com.mrstudios.punish.command.HistoryCommand;
 import com.mrstudios.punish.command.PunishMenuCommand;
 import com.mrstudios.punish.gui.BedrockForms;
 import com.mrstudios.punish.gui.DisplayGuard;
+import com.mrstudios.punish.gui.HistoryMenus;
 import com.mrstudios.punish.gui.Items;
 import com.mrstudios.punish.gui.MenuHolder;
 import com.mrstudios.punish.gui.MenuListener;
@@ -99,6 +101,7 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
     private MuteEnforcement mutes;
     private PromptService prompts;
     private PunishMenus menus;
+    private HistoryMenus history;
     /** {@code bedrock.floodgate} as at startup (changing it needs a restart). */
     private boolean floodgateSetting;
     private IpFeatures ip;
@@ -123,7 +126,8 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
         List<CommandRegistry.Switchable> switchable = List.of(PunishCommand.ban(this), RemoveCommand.unban(this),
                 PunishCommand.warn(this), RemoveCommand.unwarn(this), PunishCommand.mute(this),
                 RemoveCommand.unmute(this), PunishCommand.muteip(this), PunishCommand.banip(this),
-                RemoveCommand.unmuteip(this), RemoveCommand.unbanip(this), new PunishMenuCommand(this));
+                RemoveCommand.unmuteip(this), RemoveCommand.unbanip(this), new PunishMenuCommand(this),
+                new HistoryCommand(this));
         Set<String> reserved = new HashSet<>(AdminCommand.ALIASES);
         reserved.add(AdminCommand.LABEL);
 
@@ -418,6 +422,11 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
         getServer().getPluginManager().registerEvents(new MenuListener(this), this);
         getServer().getPluginManager().registerEvents(new DisplayGuard(items, getLogger()), this);
         menus = new PunishMenus(this, items, prompts);
+        history = new HistoryMenus(this, items, prompts);
+    }
+
+    public HistoryMenus history() {
+        return history;
     }
 
     public PunishMenus menus() {

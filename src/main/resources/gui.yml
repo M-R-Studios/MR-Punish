@@ -21,6 +21,8 @@ sounds:
   click:  { enabled: true, sound: minecraft:ui.button.click, volume: 0.6, pitch: 1.0 }
   # A button was refused (no permission, or not possible right now).
   denied: { enabled: true, sound: minecraft:block.note_block.bass, volume: 0.8, pitch: 0.5 }
+  # A page was turned or a filter changed.
+  page:   { enabled: true, sound: minecraft:item.book.page_turn, volume: 0.8, pitch: 1.0 }
 
 # Names of the punishment types in menus (<type-name>).
 type-names: { WARN: Warning, MUTE: Mute, BAN: Ban, IP_MUTE: IP mute, IP_BAN: IP ban }
@@ -30,6 +32,8 @@ common:
   back:     { material: ARROW, name: "<gray>Back" }
   # Shown where data goes until it has loaded.
   loading:  { material: CLOCK, name: "<gray>Loading…" }
+  previous: { material: ARROW, name: "<gray>Previous page" }
+  next:     { material: ARROW, name: "<gray>Next page" }
 
 # /punish <player>
 punish-menu:
@@ -61,6 +65,8 @@ punish-menu:
     BAN:     { slot: 21, material: IRON_AXE,      name: "<red>Bans",      lore: ["<gray>Active: <white><active>"] }
     IP_MUTE: { slot: 23, material: WRITABLE_BOOK, name: "<gold>IP Mutes", lore: ["<gray>Active: <white><active>", "<dark_gray>Affects every account on the IP."] }
     IP_BAN:  { slot: 24, material: NETHERITE_AXE, name: "<dark_red>IP Bans", lore: ["<gray>Active: <white><active>", "<dark_gray>Affects every account on the IP."] }
+  # The player's history (needs mrpunish.history). <total>: how many punishments.
+  history: { slot: 25, material: BOOKSHELF, name: "<aqua>History", lore: ["<gray>Punishments: <white><total>"] }
   # Added to the IP buttons while IP features are off (they can't be used then).
   ip-disabled-lore: ["<dark_gray>IP features are off."]
   close-slot: 40
@@ -136,3 +142,59 @@ confirm-menu:
     when-off: { material: ENDER_PEARL, name: "<gray>Silent: <red>off", lore: ["<gray>Announced if enabled in config."] }
   # Shown on the confirm button while the punishment is being saved.
   submitting: { material: CLOCK, name: "<gray>Saving…" }
+
+# /history <player>: 45 entries per page, newest first. Includes IP punishments on any IP the
+# player was seen with recently (marked "(IP)").
+history-menu:
+  title: "History – <player> (<page>/<pages>)"
+  rows: 6
+  # <type-name>, <id>, <reason>
+  entry-name: "<white>#<id> <type-name> <dark_gray>– <white><reason>"
+  # Lines that are empty for an entry (no note, not removed...) are left out.
+  entry-lore:
+    - "<gray>Status: <status>"
+    - "<gray>Duration: <white><duration>"
+    - "<gray>Issued: <white><issued>"
+    - "<gray>Expires: <white><expires>"
+    - "<gray>By: <white><staff>"
+    - "<gray>Offence: <white><offence-ordinal>"
+    - "<note-line>"
+    - "<removed-line>"
+    - "<replaced-line>"
+    - "<ip-line>"
+    - ""
+    - "<action-line>"
+  note-line: "<gray>Note: <white><note>"
+  removed-line: "<aqua>Removed by <white><by></white> on <white><date></white>: <white><reason>"
+  replaced-line: "<yellow>Replaced by #<by-id> on <white><date>"
+  ip-line: "<dark_gray>(IP, applies to <accounts> account(s))"
+  # <expires> of a permanent punishment, and of one that never had an end (warnings kept forever).
+  never: "never"
+  action-remove: "<yellow>Left-click for details · Right-click to remove"
+  action-details: "<yellow>Left-click for details"
+  # The item of each status (only the material, glint and custom-model-data are used).
+  status-items:
+    ACTIVE:       { material: RED_CONCRETE, glint: true }
+    EXPIRED:      { material: GRAY_CONCRETE }
+    REMOVED:      { material: LIGHT_BLUE_CONCRETE }
+    REPLACED:     { material: YELLOW_CONCRETE }
+    NOT_ENFORCED: { material: BLACK_CONCRETE }
+  # Shown when nothing matches the filters.
+  empty: { slot: 22, material: BARRIER, name: "<gray>No punishments" }
+  # <filter>: the current type or status.
+  type-filter:   { slot: 47, material: HOPPER, name: "<gray>Type: <white><filter>", lore: ["<yellow>Click to change"] }
+  status-filter: { slot: 48, material: COMPARATOR, name: "<gray>Status: <white><filter>", lore: ["<yellow>Click to change"] }
+  filter-all: "All"
+  previous-slot: 45
+  back-slot: 49
+  next-slot: 53
+
+# One punishment from the history, with its Remove button.
+history-detail:
+  title: "#<id> – <player>"
+  rows: 3
+  entry-slot: 13
+  remove: { slot: 11, material: LAVA_BUCKET, name: "<red>Remove this <type-name>", lore: ["<gray>You'll be asked for a reason."] }
+  # Instead of Remove when it can't be removed (not active).
+  not-removable: { slot: 11, material: GRAY_DYE, name: "<gray>Can't be removed", lore: ["<gray>Only active punishments can be removed."] }
+  back-slot: 15
