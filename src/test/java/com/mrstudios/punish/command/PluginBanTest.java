@@ -31,16 +31,16 @@ class PluginBanTest {
 
     private ServerMock server;
     private MRPunish plugin;
-    private BanCommand ban;
-    private UnbanCommand unban;
+    private PunishCommand ban;
+    private RemoveCommand unban;
     private ConsoleCommandSenderMock console;
 
     @BeforeEach
     void setUp() {
         server = MockBukkit.mock();
         plugin = MockBukkit.load(MRPunish.class);
-        ban = new BanCommand(plugin);
-        unban = new UnbanCommand(plugin);
+        ban = PunishCommand.ban(plugin);
+        unban = RemoveCommand.unban(plugin);
         console = (ConsoleCommandSenderMock) server.getConsoleSender();
     }
 
@@ -152,7 +152,7 @@ class PluginBanTest {
         assertEquals("MR-Punish » 'bad;name' isn't a valid player name.", nextConsoleLine());
         known("Alex");
         ban.run(console, "Alex", "-s");
-        assertEquals("MR-Punish » Usage: " + BanCommand.USAGE, nextConsoleLine());
+        assertEquals("MR-Punish » Usage: " + ban.usage(), nextConsoleLine());
         unban.run(console, "Alex", "");
         assertEquals("MR-Punish » Alex has no active ban.", nextConsoleLine());
     }

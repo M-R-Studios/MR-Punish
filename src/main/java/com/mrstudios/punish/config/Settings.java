@@ -24,11 +24,15 @@ import org.bukkit.NamespacedKey;
  * @param maxTextLength longest note or removal reason kept
  * @param punishedSound played to the staff member when a punishment is applied
  * @param failedSound   played to the staff member when an action is refused or fails
+ * @param warnTitle     also show a warned player a title
+ * @param mute          what a muted player can't do
+ * @param warnedSound   played to the warned player
  */
 public record Settings(TimeSpan historyPeriod, ReasonRegistry reasons, Map<String, CommandToggle> commands,
         Storage storage, String serverName, TimeSpan warningActiveFor, Map<PunishmentType, Boolean> announcements,
         boolean luckperms, SoundSetting notifySound, Display display, Login login, boolean banKickOnline,
-        int maxTextLength, SoundSetting punishedSound, SoundSetting failedSound) {
+        int maxTextLength, SoundSetting punishedSound, SoundSetting failedSound, boolean warnTitle, Mute mute,
+        SoundSetting warnedSound) {
 
     public Settings {
         commands = Map.copyOf(commands);
@@ -49,6 +53,19 @@ public record Settings(TimeSpan historyPeriod, ReasonRegistry reasons, Map<Strin
 
         public String date(long millis) {
             return dateFormat.format(java.time.Instant.ofEpochMilli(millis).atZone(zone));
+        }
+    }
+
+    /**
+     * {@code mute.*}.
+     *
+     * @param blockedCommands command names and aliases a muted player can't use, lower case
+     */
+    public record Mute(java.util.Set<String> blockedCommands, boolean blockSigns, boolean blockBooks,
+            int notifyCooldownSeconds) {
+
+        public Mute {
+            blockedCommands = java.util.Set.copyOf(blockedCommands);
         }
     }
 

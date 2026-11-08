@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.Set;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
@@ -12,6 +13,10 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.jupiter.api.Test;
 
 class MessagesLoaderTest {
+
+    /** Placeholders a message may use but the shipped text doesn't (titles are kept short). */
+    private static final Set<String> OPTIONAL = Set.of("target.warn-title reason", "target.warn-title staff",
+            "target.warn-subtitle staff", "target.warn-offline staff", "target.mute-chat staff");
 
     private final MessagesLoader loader = new MessagesLoader(MessagesLoader.bundledDefaults());
 
@@ -48,6 +53,9 @@ class MessagesLoaderTest {
                     .toArray(TagResolver[]::new);
             String text = plain(messages.component(key, filled));
             for (String name : MessagesLoader.placeholders(key)) {
+                if (OPTIONAL.contains(key + " " + name)) {
+                    continue;
+                }
                 assertTrue(text.contains("[" + name + "]"), key + " doesn't show <" + name + ">: " + text);
             }
             assertFalse(text.contains("<"), key + " has an unfilled tag: " + text);

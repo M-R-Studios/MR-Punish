@@ -15,36 +15,57 @@ import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.command.CommandSender;
 
 /**
- * {@code /ban <player> [-s] <reason> [note...]} (DESIGN.md 4.1). The first word picks a BAN reason
- * (key or alias); anything else falls back to the BAN fallback reason with the whole text as the
- * note. The duration comes from the reason's escalation. Until the punish menu exists (step 7), a
- * ban from a player applies straight away, as it does from console.
+ * {@code /warn}, {@code /mute} and {@code /ban <player> [-s] <reason> [note...]} (DESIGN.md 4.1). The
+ * first word picks a reason of the command's type (key or alias); anything else falls back to the
+ * type's fallback reason with the whole text as the note. Durations come from the reason's escalation.
+ * Until the punish menu exists (step 7), a punishment from a player applies straight away, as it
+ * does from console.
  */
-public final class BanCommand implements CommandRegistry.Switchable {
-
-    static final String USAGE = "/ban <player> [-s] <reason> [note...]";
+public final class PunishCommand implements CommandRegistry.Switchable {
 
     private final MRPunish plugin;
     private final PunishCommands shared;
+    private final PunishmentType type;
+    private final String name;
+    private final String description;
 
-    public BanCommand(MRPunish plugin) {
+    private PunishCommand(MRPunish plugin, PunishmentType type, String name, String description) {
         this.plugin = plugin;
         this.shared = new PunishCommands(plugin);
+        this.type = type;
+        this.name = name;
+        this.description = description;
+    }
+
+    public static PunishCommand warn(MRPunish plugin) {
+        return new PunishCommand(plugin, PunishmentType.WARN, "warn", "Warn a player.");
+    }
+
+    public static PunishCommand mute(MRPunish plugin) {
+        return new PunishCommand(plugin, PunishmentType.MUTE, "mute", "Mute a player with the reason's next step.");
+    }
+
+    public static PunishCommand ban(MRPunish plugin) {
+        return new PunishCommand(plugin, PunishmentType.BAN, "ban", "Ban a player with the reason's next step.");
+    }
+
+    public String usage() {
+        return "/" + name + " <player> [-s] <reason> [note...]";
     }
 
     @Override
     public String name() {
-        return "ban";
+        return name;
     }
 
     @Override
     public String description() {
-        return "Ban a player with the reason's next escalation step.";
+        return description;
     }
 
     @Override
     public LiteralArgumentBuilder<CommandSourceStack> build(String literal) {
-        String permission = PunishmentService.permission(PunishmentType.BAN);
+        String permission = PunishmentService.permission(type);
         return Commands.literal(literal)
                 .requires(source -> source.getSender().hasPermission(permission))
                 .executes(ctx -> usage(ctx.getSource().getSender()))
@@ -52,19 +73,19 @@ public final class BanCommand implements CommandRegistry.Switchable {
                         .suggests(shared.players())
                         .executes(ctx -> run(ctx.getSource().getSender(), StringArgumentType.getString(ctx, "player"), ""))
                         .then(Commands.argument("reason", StringArgumentType.greedyString())
-                                .suggests(shared.reasons(PunishmentType.BAN))
+                                .suggests(shared.reasons(type))
                                 .executes(ctx -> run(ctx.getSource().getSender(),
                                         StringArgumentType.getString(ctx, "player"),
                                         StringArgumentType.getString(ctx, "reason")))));
     }
 
     private int usage(CommandSender sender) {
-        shared.messages().send(sender, "general.usage", Placeholder.unparsed("usage", USAGE));
+        shared.messages().send(sender, "general.usage", Placeholder.unparsed("usage", usage()));
         return 0;
     }
 
     int run(CommandSender sender, String player, String rest) {
-        if (!sender.hasPermission(PunishmentService.permission(PunishmentType.BAN))) {
+        if (!sender.hasPermission(PunishmentService.permission(type))) {
             shared.messages().send(sender, "general.no-permission");
             return 0;
         }
@@ -73,7 +94,7 @@ public final class BanCommand implements CommandRegistry.Switchable {
             return usage(sender);
         }
         ReasonRegistry reasons = plugin.state().settings().reasons();
-        ReasonRegistry.Resolution resolution = reasons.resolve(PunishmentType.BAN, parsed.text()).orElseThrow();
+        ReasonRegistry.Resolution resolution = reasons.resolve(type, parsed.text()).orElseThrow();
         String note = shared.cleaned(resolution.note());
         shared.withTarget(sender, player, target -> {
             // Read again at the moment of the action (DESIGN.md 2.1 #4).

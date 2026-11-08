@@ -46,6 +46,7 @@ public final class BanEnforcement implements Listener, PunishmentService.Listene
     private final Storage storage;
     private final Supplier<PluginState> state;
     private final BanCache cache;
+    private final MuteCache mutes;
     private final LongSupplier clock;
     private final Logger log;
     private final Set<UUID> unverified = ConcurrentHashMap.newKeySet();
@@ -54,11 +55,12 @@ public final class BanEnforcement implements Listener, PunishmentService.Listene
     private final AtomicLong lastAlert = new AtomicLong(Long.MIN_VALUE / 2);
 
     public BanEnforcement(Plugin plugin, Storage storage, Supplier<PluginState> state, BanCache cache,
-            LongSupplier clock, Logger log) {
+            MuteCache mutes, LongSupplier clock, Logger log) {
         this.plugin = plugin;
         this.storage = storage;
         this.state = state;
         this.cache = cache;
+        this.mutes = mutes;
         this.clock = clock;
         this.log = log;
     }
@@ -94,6 +96,10 @@ public final class BanEnforcement implements Listener, PunishmentService.Listene
             case ALLOW_UNVERIFIED -> unverified.add(uuid);
             case ALLOW -> unverified.remove(uuid);
         }
+        if (lookup.ok()) {
+            // Loaded together with the ban, so a muted player can't chat in their first seconds.
+            mutes.set(uuid, lookup.mute());
+        }
         if (!lookup.ok()) {
             reportFailure(event.getName(), failure[0], settings.login().failPolicy(), decision.outcome());
         }
@@ -107,12 +113,8 @@ public final class BanEnforcement implements Listener, PunishmentService.Listene
         }
         long now = clock.getAsLong();
         try {
-            Optional<Punishment> ban = storage.executor().submit("checking a login", c ->
-                    new PunishmentRepo(storage.database()).active(c, PunishmentType.BAN,
-                            new PunishmentRepo.Subject(uuid, null), now).stream()
-                            .max(Comparator.comparing(p -> p.expiresAt() == null ? Long.MAX_VALUE : p.expiresAt())))
+            return storage.executor().submit("checking a login", c -> find(c, uuid, now))
                     .get(timeoutMs, TimeUnit.MILLISECONDS);
-            return LoginCheck.Lookup.of(ban);
         } catch (TimeoutException e) {
             failure[0] = "too slow (over " + timeoutMs + " ms)";
         } catch (ExecutionException e) {
@@ -122,6 +124,15 @@ public final class BanEnforcement implements Listener, PunishmentService.Listene
             failure[0] = "interrupted";
         }
         return LoginCheck.Lookup.failed();
+    }
+
+    /** The account's latest-ending active ban and mute, in one read. Database thread. */
+    LoginCheck.Lookup find(java.sql.Connection c, UUID uuid, long now) throws java.sql.SQLException {
+        PunishmentRepo repo = new PunishmentRepo(storage.database());
+        PunishmentRepo.Subject subject = new PunishmentRepo.Subject(uuid, null);
+        Comparator<Punishment> byEnd = Comparator.comparing(p -> p.expiresAt() == null ? Long.MAX_VALUE : p.expiresAt());
+        return LoginCheck.Lookup.of(repo.active(c, PunishmentType.BAN, subject, now).stream().max(byEnd),
+                repo.active(c, PunishmentType.MUTE, subject, now).stream().max(byEnd));
     }
 
     /** One WARNING per 10 s (with a count of the rest), one admin alert per minute (DESIGN.md 7.7). */
@@ -180,12 +191,11 @@ public final class BanEnforcement implements Listener, PunishmentService.Listene
             }
             started++;
             long now = clock.getAsLong();
-            storage.executor().submit("re-checking " + player.getName(), c ->
-                    new PunishmentRepo(storage.database()).active(c, PunishmentType.BAN,
-                            new PunishmentRepo.Subject(uuid, null), now).stream()
-                            .max(Comparator.comparing(p -> p.expiresAt() == null ? Long.MAX_VALUE : p.expiresAt())))
-                    .thenAccept(ban -> plugin.getServer().getScheduler().runTask(plugin, () -> {
+            storage.executor().submit("re-checking " + player.getName(), c -> find(c, uuid, now))
+                    .thenAccept(lookup -> plugin.getServer().getScheduler().runTask(plugin, () -> {
                         unverified.remove(uuid);
+                        mutes.set(uuid, lookup.mute());
+                        Optional<Punishment> ban = lookup.ban();
                         Player online = plugin.getServer().getPlayer(uuid);
                         if (ban.isPresent() && online != null) {
                             PluginState current = state.get();

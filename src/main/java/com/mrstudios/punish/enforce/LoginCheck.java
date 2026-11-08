@@ -30,17 +30,22 @@ public final class LoginCheck {
     /**
      * What the database answered.
      *
-     * @param ok  false if the lookup failed or timed out
-     * @param ban the active ban it found (only when {@code ok})
+     * @param ok   false if the lookup failed or timed out
+     * @param ban  the active ban it found (only when {@code ok})
+     * @param mute the active mute it found, for the mute cache (only when {@code ok})
      */
-    public record Lookup(boolean ok, Optional<Punishment> ban) {
+    public record Lookup(boolean ok, Optional<Punishment> ban, Optional<Punishment> mute) {
 
         public static Lookup failed() {
-            return new Lookup(false, Optional.empty());
+            return new Lookup(false, Optional.empty(), Optional.empty());
         }
 
         public static Lookup of(Optional<Punishment> ban) {
-            return new Lookup(true, ban);
+            return new Lookup(true, ban, Optional.empty());
+        }
+
+        public static Lookup of(Optional<Punishment> ban, Optional<Punishment> mute) {
+            return new Lookup(true, ban, mute);
         }
     }
 

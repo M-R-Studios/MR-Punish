@@ -12,6 +12,10 @@ softdepend: [LuckPerms]
 #   mrpunish (aliases staffhelper, mrp): help, reload, version, import vanilla [--clear]
 #   ban <player> [-s] <reason> [note...]
 #   unban <player> [reason...]
+#   warn <player> [-s] <reason> [note...]
+#   unwarn <player> [id] [reason...]
+#   mute <player> [-s] <reason> [note...]
+#   unmute <player> [reason...]
 permissions:
   # Rank nodes. What each rank grants is set in plugins/MR-Punish/permissions.yml.
   mrpunish.helper:

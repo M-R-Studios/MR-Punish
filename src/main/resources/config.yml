@@ -255,6 +255,20 @@ warnings:
   # How long a warning shows as "Active" and counts in the active punishment count.
   # Display only: escalation uses the history period above. "permanent" = always active.
   active-for: 90d
+  # Show the warned player a title and subtitle (texts in messages.yml) as well as the chat message.
+  title: true
+
+mute:
+  # Commands a muted player can't use. Aliases and namespaced forms (/essentials:msg, /minecraft:tell)
+  # count too: a command is blocked if its name or any of its aliases is in this list, and so is an
+  # alias from the server's commands.yml that runs one of them.
+  blocked-commands: [msg, tell, w, whisper, r, reply, me, say, mail, m, t, pm, dm, message, emsg, etell, ereply, er, broadcast, bc, shout, helpop, teammsg, tm]
+  # Block writing on signs while muted.
+  block-signs: true
+  # Block signing books while muted (writing a book is allowed, signing it isn't).
+  block-books: true
+  # Minimum seconds between two "you are muted" messages to the same player.
+  notify-cooldown-seconds: 3
 
 announcements:
   # Tell every player when someone is punished. Never includes IP addresses or staff notes.
@@ -294,6 +308,10 @@ input:
 commands:
   ban:   { enabled: true, aliases: [] }
   unban: { enabled: true, aliases: [] }
+  warn:   { enabled: true, aliases: [] }
+  unwarn: { enabled: true, aliases: [] }
+  mute:   { enabled: true, aliases: [] }
+  unmute: { enabled: true, aliases: [] }
 
 storage:
   # SQLITE (a file in plugins/MR-Punish/) or MYSQL (also MariaDB). Changing this needs a restart.
@@ -334,3 +352,5 @@ sounds:
   punished: { enabled: true, sound: minecraft:block.anvil.land, volume: 0.6, pitch: 1.0 }
   # Played to the staff member when an action is refused or fails.
   failed: { enabled: true, sound: minecraft:entity.villager.no, volume: 1.0, pitch: 1.0 }
+  # Played to the warned player.
+  warned: { enabled: true, sound: minecraft:block.note_block.bass, volume: 1.0, pitch: 0.6 }

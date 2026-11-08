@@ -15,7 +15,7 @@ class SettingsLoaderTest {
 
     /** Any material is an item except names starting with NOT_. */
     /** The commands the plugin ships that config.yml can switch. */
-    static final List<String> SHIPPED_COMMANDS = List.of("ban", "unban");
+    static final List<String> SHIPPED_COMMANDS = List.of("ban", "unban", "warn", "unwarn", "mute", "unmute");
 
     private static SettingsLoader loader() {
         return loader(SHIPPED_COMMANDS);
@@ -265,7 +265,11 @@ class SettingsLoaderTest {
         String text = edited("""
                 commands:
                   ban:   { enabled: true, aliases: [] }
-                  unban: { enabled: true, aliases: [] }""", """
+                  unban: { enabled: true, aliases: [] }
+                  warn:   { enabled: true, aliases: [] }
+                  unwarn: { enabled: true, aliases: [] }
+                  mute:   { enabled: true, aliases: [] }
+                  unmute: { enabled: true, aliases: [] }""", """
                 commands:
                   ban: { enabled: false, aliases: [tempban, "bad label", mrp] }
                   mute: { enabled: true, aliases: [tempban, silence] }
@@ -283,9 +287,11 @@ class SettingsLoaderTest {
 
     @Test
     void missingCommandToggleWarnsAndIsOn() {
-        LoadResult<Settings> result = loader(List.of("ban", "unban", "mute")).load(bundledText());
-        assertTrue(has(result, "commands.mute is missing, using enabled: true"), result.warnings().toString());
-        assertEquals(CommandToggle.DEFAULT, result.value().command("mute"));
+        List<String> withFreeze = new java.util.ArrayList<>(SHIPPED_COMMANDS);
+        withFreeze.add("freeze");
+        LoadResult<Settings> result = loader(withFreeze).load(bundledText());
+        assertTrue(has(result, "commands.freeze is missing, using enabled: true"), result.warnings().toString());
+        assertEquals(CommandToggle.DEFAULT, result.value().command("freeze"));
         assertEquals(CommandToggle.DEFAULT, result.value().command("ban"));
     }
 

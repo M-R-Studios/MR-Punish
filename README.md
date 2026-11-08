@@ -28,6 +28,12 @@ The tables are created on first start and upgraded automatically when MR-Punish 
 
 If the database can't be reached at startup or goes away while the server runs, MR-Punish keeps running in a degraded mode. It doesn't save anything, tells online admins (`mrpunish.admin`) and every admin who joins, and tries again every 30 seconds until the database is back. `/mrpunish version` shows whether storage is connected and why not.
 
+## Warnings and mutes
+
+`/warn` and `/mute` work like `/ban`: `<player> [-s] <reason> [note...]`, with reasons and escalation from `config.yml`. A warned player gets a chat message and a title (`warnings.title`); if they're offline, they're told on their next join. Warnings stack and never replace each other; they show as active for `warnings.active-for`.
+
+A muted player can't chat, can't use the commands in `mute.blocked-commands`, and (by default) can't write on signs or sign books. A command is blocked by every name it's known by: its aliases, namespaced forms such as `/minecraft:tell` or `/essentials:msg`, other plugins' aliases for the same command, and aliases in the server's `commands.yml` that run it. The muted player is told the reason and how long is left, at most every `mute.notify-cooldown-seconds`. A mute that runs out simply stops blocking. `/unmute` removes every active mute; `/unwarn <player> [id]` removes one warning (the most recent if no id is given).
+
 ## Bans
 
 `/ban <player> [-s] <reason> [note...]` bans with the reason's next escalation step from `config.yml`: the first word picks a ban reason by its key or one of its aliases, and the rest is a staff note. If the first word isn't a ban reason, the "other" ban reason is used and the whole text becomes the note. `-s` (anywhere after the name) skips the public announcement; staff are still notified. A new ban can never end sooner than an active one (remove it first to shorten it), and history is never deleted: replaced and removed bans stay visible with who, when and why. `/unban` removes every active ban of the player.
@@ -60,6 +66,10 @@ To give a label back to vanilla or another plugin, turn it off in `config.yml` (
 | `/mrpunish import vanilla [--clear]` | `mrpunish.import` | Imports vanilla's player bans; `--clear` removes the imported entries from the vanilla list afterwards. |
 | `/ban <player> [-s] <reason> [note...]` | `mrpunish.ban` | Bans with the reason's next escalation step. Works from console. |
 | `/unban <player> [reason...]` | `mrpunish.remove` | Removes every active ban of the player, recording the reason. |
+| `/mute <player> [-s] <reason> [note...]` | `mrpunish.mute` | Mutes with the reason's next escalation step. |
+| `/unmute <player> [reason...]` | `mrpunish.remove` | Removes every active mute of the player. |
+| `/warn <player> [-s] <reason> [note...]` | `mrpunish.warn` | Warns; an offline player is told on their next join. |
+| `/unwarn <player> [id] [reason...]` | `mrpunish.remove` | Removes warning `id` (a number, or `#12`), or the most recent active warning. |
 
 ## Permissions
 

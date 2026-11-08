@@ -23,6 +23,8 @@ general:
 
 punish:
   # Sent to the staff member
+  warned: "<prefix><green>Warned <white><player></white> for <reason> <gray>(#<id>, offence <offence>)."
+  muted: "<prefix><green>Muted <white><player></white> for <reason> <gray>(<duration>, #<id>, offence <offence>)."
   banned: "<prefix><green>Banned <white><player></white> for <reason> <gray>(<duration>, #<id>, offence <offence>)."
   replaced: "<prefix><gray>This replaces #<old-id>."
   failed: "<prefix><red>The punishment could not be saved, so it was NOT applied (error <error-id>)."
@@ -40,9 +42,29 @@ unpunish:
   issuer-rank: "<prefix><red>#<id> was issued by a higher rank than yours, so you can't remove it."
   self: "<prefix><red>You can't remove your own punishment."
   failed: "<prefix><red>The removal could not be saved, so nothing was removed (error <error-id>)."
+  unwarn-not-found: "<prefix><red>No active warning #<id> for <player>."
 
 # Sent to the punished player
 target:
+  # Sent to a warned player who is online (lines), plus a title if warnings.title is true.
+  warn-chat:
+    - "<red><bold>You have been warned"
+    - "<gray>Reason: <white><reason>"
+    - "<gray>By: <white><staff>"
+  warn-title: "<red>Warning"
+  warn-subtitle: "<white><reason>"
+  # Shown on join for each warning given while the player was offline.
+  warn-offline: "<prefix><red>You were warned while offline: <white><reason></white> <gray>(<date>)"
+  # Sent to a muted player who is online. <appeal-click>...</appeal-click> makes the text open the appeal link.
+  mute-chat:
+    - "<red><bold>You have been muted"
+    - "<gray>Reason: <white><reason>"
+    - "<gray>Duration: <white><duration>"
+    - "<gray>Appeal: <white><appeal-click><appeal-link></appeal-click>"
+  # Sent when a muted player tries to chat or use a blocked command (at most every few seconds).
+  muted-blocked: "<prefix><red>You are muted for <white><reason></white>. <gray><remaining> left. Appeal: <appeal-link>"
+  muted-blocked-permanent: "<prefix><red>You are permanently muted for <white><reason></white>. <gray>Appeal: <appeal-link>"
+  unmuted: "<prefix><green>You are no longer muted."
   # Lines of the screen a banned player sees when kicked or trying to join.
   ban-screen:
     - "<red><bold>You are banned from this server"

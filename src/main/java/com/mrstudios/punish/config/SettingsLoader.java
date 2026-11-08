@@ -42,7 +42,7 @@ public final class SettingsLoader {
 
     private static final Set<String> TOP_LEVEL = Set.of("config-version", "escalation", "fallback-reasons", "reasons",
             "commands", "storage", "server-name", "warnings", "announcements", "hooks", "sounds", "date-format",
-            "time-zone", "appeal-link", "ban", "login", "input");
+            "time-zone", "appeal-link", "ban", "login", "input", "mute");
     private static final Set<String> REASON_FIELDS = Set.of("type", "display", "description", "icon", "slot", "aliases",
             "escalation", "history-period", "permission", "enabled");
     private static final Set<String> TOGGLE_FIELDS = Set.of("enabled", "aliases");
@@ -159,7 +159,8 @@ public final class SettingsLoader {
         String serverName = r.text("server-name", "", s -> s.length() <= 32 && !s.contains(" "),
                 "a name of at most 32 characters without spaces");
         TimeSpan activeFor = r.duration("warnings.active-for", "90d");
-        warnUnknownIn(yaml, "warnings", Set.of("active-for"), warnings);
+        boolean warnTitle = r.bool("warnings.title", true);
+        warnUnknownIn(yaml, "warnings", Set.of("active-for", "title"), warnings);
         Map<PunishmentType, Boolean> announcements = new EnumMap<>(PunishmentType.class);
         for (PunishmentType type : PunishmentType.values()) {
             boolean def = type == PunishmentType.BAN || type == PunishmentType.IP_BAN;
@@ -175,8 +176,10 @@ public final class SettingsLoader {
                 new Settings.SoundSetting(true, NamespacedKey.minecraft("block.anvil.land"), 0.6f, 1.0f));
         Settings.SoundSetting failed = sound(r, "sounds.failed",
                 new Settings.SoundSetting(true, NamespacedKey.minecraft("entity.villager.no"), 1.0f, 1.0f));
-        warnUnknownIn(yaml, "sounds", Set.of("notify", "punished", "failed"), warnings);
-        for (String name : List.of("notify", "punished", "failed")) {
+        Settings.SoundSetting warned = sound(r, "sounds.warned",
+                new Settings.SoundSetting(true, NamespacedKey.minecraft("block.note_block.bass"), 1.0f, 0.6f));
+        warnUnknownIn(yaml, "sounds", Set.of("notify", "punished", "failed", "warned"), warnings);
+        for (String name : List.of("notify", "punished", "failed", "warned")) {
             warnUnknownIn(yaml, "sounds." + name, Set.of("enabled", "sound", "volume", "pitch"), warnings);
         }
 
@@ -213,10 +216,27 @@ public final class SettingsLoader {
                 r.wholeNumber("login.timeout-ms", 500, 10_000, 3000));
         warnUnknownIn(yaml, "login", Set.of("fail-policy", "timeout-ms"), warnings);
         int maxText = r.wholeNumber("input.max-text-length", 16, 500, 200);
+        Set<String> blocked = new java.util.LinkedHashSet<>();
+        for (String command : r.textList("mute.blocked-commands", List.of("msg", "tell", "w", "me"))) {
+            String label = command.strip().toLowerCase(Locale.ROOT);
+            if (label.startsWith("/")) {
+                label = label.substring(1);
+            }
+            if (!label.isEmpty() && !label.contains(" ")) {
+                blocked.add(label);
+            } else {
+                warnings.add("mute.blocked-commands: '" + command + "' is not a command name, skipped");
+            }
+        }
+        Settings.Mute mute = new Settings.Mute(blocked, r.bool("mute.block-signs", true),
+                r.bool("mute.block-books", true), r.wholeNumber("mute.notify-cooldown-seconds", 0, 3600, 3));
+        warnUnknownIn(yaml, "mute", Set.of("blocked-commands", "block-signs", "block-books",
+                "notify-cooldown-seconds"), warnings);
         warnUnknownIn(yaml, "input", Set.of("max-text-length"), warnings);
 
         return LoadResult.loaded(new Settings(historyPeriod, registry, commands, storage, serverName, activeFor,
-                announcements, luckperms, notify, display, login, kickOnline, maxText, punished, failed), warnings);
+                announcements, luckperms, notify, display, login, kickOnline, maxText, punished, failed, warnTitle,
+                mute, warned), warnings);
     }
 
     private Settings.SoundSetting sound(YamlReader r, String section, Settings.SoundSetting def) {

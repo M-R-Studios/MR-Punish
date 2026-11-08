@@ -19,3 +19,5 @@
 - Public ban announcements (`announcements.*`), and staff notifications with a sound.
 - `/mrpunish import vanilla [--clear]` copies vanilla's ban list into MR-Punish once; the console mentions vanilla bans at startup.
 - Offline players' ranks are read from LuckPerms when it's installed.
+- `/warn` and `/unwarn`: warnings with escalation counting, a chat message, title and sound for the warned player, and delivery on the next join for players who were offline.
+- `/mute` and `/unmute`: a muted player can't chat, use blocked commands (`mute.blocked-commands`, including their aliases, namespaced forms and `commands.yml` aliases), write signs or sign books; they're told how long is left.

@@ -56,6 +56,36 @@ public final class ActionRepo {
         }
     }
 
+    /** A message waiting for a player: its row id and what it refers to (a punishment id for WARN). */
+    public record Delivery(long id, String kind, long refId) {
+    }
+
+    /** The player's undelivered messages of {@code kind}, oldest first. */
+    public java.util.List<Delivery> pending(Connection c, UUID player, String kind) throws SQLException {
+        java.util.List<Delivery> out = new java.util.ArrayList<>();
+        try (PreparedStatement s = c.prepareStatement("SELECT id, kind, ref_id FROM " + database.table("deliveries")
+                + " WHERE uuid = ? AND kind = ? AND delivered_at IS NULL ORDER BY id")) {
+            s.setString(1, player.toString());
+            s.setString(2, kind);
+            try (java.sql.ResultSet r = s.executeQuery()) {
+                while (r.next()) {
+                    out.add(new Delivery(r.getLong(1), r.getString(2), r.getLong(3)));
+                }
+            }
+        }
+        return out;
+    }
+
+    /** Marks a delivery as shown. Only an undelivered row changes, so it's shown once. */
+    public boolean markDelivered(Connection c, long id, long at) throws SQLException {
+        try (PreparedStatement s = c.prepareStatement("UPDATE " + database.table("deliveries")
+                + " SET delivered_at = ? WHERE id = ? AND delivered_at IS NULL")) {
+            s.setLong(1, at);
+            s.setLong(2, id);
+            return s.executeUpdate() == 1;
+        }
+    }
+
     private static String truncate(String text, int max) {
         return text.length() <= max ? text : text.substring(0, max);
     }

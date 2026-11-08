@@ -22,8 +22,11 @@ import com.mrstudios.punish.punish.PunishmentService;
 import com.mrstudios.punish.rank.OfflineRanks;
 import com.mrstudios.punish.rank.RankCache;
 import com.mrstudios.punish.rank.RankRegistrar;
-import com.mrstudios.punish.command.BanCommand;
-import com.mrstudios.punish.command.UnbanCommand;
+import com.mrstudios.punish.command.PunishCommand;
+import com.mrstudios.punish.command.RemoveCommand;
+import com.mrstudios.punish.enforce.CommandLabelResolver;
+import com.mrstudios.punish.enforce.MuteCache;
+import com.mrstudios.punish.enforce.MuteEnforcement;
 import com.mrstudios.punish.enforce.BanCache;
 import com.mrstudios.punish.enforce.BanEnforcement;
 import com.mrstudios.punish.imports.VanillaImporter;
@@ -83,6 +86,7 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
     private RankCache rankCache;
     private PunishmentService punishments;
     private BanEnforcement bans;
+    private MuteEnforcement mutes;
     /** Whether the LuckPerms hook was set up at startup (changing that needs a restart). */
     private boolean luckPermsHooked;
     private static final long RANK_REFRESH_TICKS = 60 * 20L;
@@ -101,7 +105,9 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
     @Override
     public void onEnable() {
         // Commands that config.yml can switch off. Later steps add theirs.
-        List<CommandRegistry.Switchable> switchable = List.of(new BanCommand(this), new UnbanCommand(this));
+        List<CommandRegistry.Switchable> switchable = List.of(PunishCommand.ban(this), RemoveCommand.unban(this),
+                PunishCommand.warn(this), RemoveCommand.unwarn(this), PunishCommand.mute(this),
+                RemoveCommand.unmute(this));
         Set<String> reserved = new HashSet<>(AdminCommand.ALIASES);
         reserved.add(AdminCommand.LABEL);
 
@@ -165,9 +171,16 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
         punishments = new PunishmentService(storage, () -> state, offline,
                 task -> getServer().getScheduler().runTask(this, task),
                 new Notifier(getServer()::getOnlinePlayers, getLogger()), System::currentTimeMillis, getLogger());
-        bans = new BanEnforcement(this, storage, () -> state, new BanCache(), System::currentTimeMillis, getLogger());
+        MuteCache muteCache = new MuteCache();
+        bans = new BanEnforcement(this, storage, () -> state, new BanCache(), muteCache, System::currentTimeMillis,
+                getLogger());
         getServer().getPluginManager().registerEvents(bans, this);
         punishments.addListener(bans);
+        mutes = new MuteEnforcement(this, storage, () -> state, muteCache, commandLookup(), System::currentTimeMillis,
+                getLogger());
+        getServer().getPluginManager().registerEvents(mutes, this);
+        punishments.addListener(mutes);
+        mutes.loadOnline();
         bans.loadCache();
         // Players let in unverified are checked again as soon as the database answers (DESIGN.md 7.7 step 5).
         getServer().getScheduler().runTaskTimer(this, () -> bans.recheckUnverified(), HEALTH_CHECK_TICKS,
@@ -214,6 +227,7 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
             }
             if (announce) {
                 bans.loadCache();
+                mutes.loadOnline();
                 int rechecked = bans.recheckUnverified();
                 getLogger().info("Storage is back: " + storage.describeSettings() + ". Re-checked " + rechecked
                         + " player(s) who were let in unverified.");
@@ -413,6 +427,33 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
 
     public BanEnforcement bans() {
         return bans;
+    }
+
+    public MuteEnforcement mutes() {
+        return mutes;
+    }
+
+    /** The aliases in the server's commands.yml, label to command lines. Protected so tests can supply them. */
+    protected Map<String, String[]> commandAliases() {
+        return getServer().getCommandAliases();
+    }
+
+    /** The server's commands and commands.yml aliases, for the mute's command blocking (DESIGN.md 7.8). */
+    private CommandLabelResolver.Lookup commandLookup() {
+        return new CommandLabelResolver.Lookup() {
+            @Override
+            public Optional<CommandLabelResolver.Known> command(String label) {
+                org.bukkit.command.Command command = getServer().getCommandMap().getCommand(label);
+                return Optional.ofNullable(command).map(c -> new CommandLabelResolver.Known(c.getName(), c.getLabel(),
+                        c.getAliases()));
+            }
+
+            @Override
+            public List<String> aliasTargets(String label) {
+                String[] targets = commandAliases().get(label);
+                return targets == null ? List.of() : List.of(targets);
+            }
+        };
     }
 
     public RankCache rankCache() {

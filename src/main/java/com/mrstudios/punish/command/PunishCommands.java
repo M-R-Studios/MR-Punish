@@ -167,8 +167,8 @@ final class PunishCommands {
                             .collect(Collectors.joining(", "))));
             case RemoveResult.None n -> m.send(sender, "unpunish.none", Placeholder.unparsed("player", player),
                     Placeholder.unparsed("type", type));
-            case RemoveResult.NotFound n -> m.send(sender, "unpunish.none", Placeholder.unparsed("player", player),
-                    Placeholder.unparsed("type", type));
+            case RemoveResult.NotFound n -> m.send(sender, "unpunish.unwarn-not-found",
+                    Placeholder.unparsed("id", String.valueOf(n.id())), Placeholder.unparsed("player", player));
             case RemoveResult.IssuerRank i -> m.send(sender, "unpunish.issuer-rank",
                     Placeholder.unparsed("id", String.valueOf(i.id())));
             case RemoveResult.Self s -> m.send(sender, "unpunish.self");
