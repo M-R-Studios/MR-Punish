@@ -30,11 +30,38 @@ class GuiLoaderTest {
     }
 
     @Test
-    void unknownKeysWarn() {
-        LoadResult<GuiSettings> gui = new GuiLoader().load("gui-version: 1\nfiller: { material: STONE }\n");
-        assertEquals(List.of("filler is not a known setting (typo?), ignored"), gui.warnings());
+    void unknownKeysWarn() throws Exception {
+        LoadResult<GuiSettings> gui = new GuiLoader().load(resource("gui.yml") + "\nfillr: { material: STONE }\n");
+        assertEquals(List.of("fillr is not a known setting (typo?), ignored"), gui.warnings());
         LoadResult<ScoreboardSettings> scoreboard = new ScoreboardLoader().load("scoreboard-version: 1\ntitle: x\n");
         assertEquals(List.of("title is not a known setting (typo?), ignored"), scoreboard.warnings());
+    }
+
+    @Test
+    void badValuesFallBackToTheJarsWithAWarning() throws Exception {
+        String text = resource("gui.yml")
+                .replace("  mode: GREY", "  mode: SHOW")
+                .replace("  close-slot: 40", "  close-slot: 50")
+                .replace("  item: { material: GRAY_DYE,", "  item: { material: NOT_AN_ITEM,");
+        LoadResult<GuiSettings> result = new GuiLoader(m -> !m.equals("NOT_AN_ITEM"), k -> true,
+                GuiLoader.bundledDefaults()).load(text);
+        assertTrue(result.ok(), result.error());
+        GuiSettings gui = result.value();
+        assertEquals(GuiSettings.NoPermissionMode.GREY, gui.noPermissionMode());
+        assertEquals(40, gui.number("punish-menu.close-slot"));
+        assertEquals("GRAY_DYE", gui.item("no-permission.item").material());
+        assertEquals(3, result.warnings().size(), result.warnings().toString());
+        assertTrue(result.warnings().contains("no-permission.mode: 'SHOW' is not GREY or HIDE, using GREY"));
+    }
+
+    @Test
+    void hideModeAndCustomItems() throws Exception {
+        String text = resource("gui.yml").replace("  mode: GREY", "  mode: hide")
+                .replace("when-on:  { material: ENDER_EYE,", "when-on:  { material: LIME_DYE, glint: true,");
+        GuiSettings gui = new GuiLoader().load(text).value();
+        assertEquals(GuiSettings.NoPermissionMode.HIDE, gui.noPermissionMode());
+        assertEquals("LIME_DYE", gui.item("confirm-menu.silent.when-on").material());
+        assertTrue(gui.item("confirm-menu.silent.when-on").glint());
     }
 
     @Test

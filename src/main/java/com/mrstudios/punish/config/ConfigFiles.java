@@ -103,7 +103,7 @@ public final class ConfigFiles {
 
     /** Everything from the jar's own files: what a file that fails at startup falls back to. */
     public PluginState defaults() {
-        return new PluginState(settings.defaults(), messages.defaults(), GuiSettings.DEFAULTS, ranks.defaults(),
+        return new PluginState(settings.defaults(), messages.defaults(), gui.defaults(), ranks.defaults(),
                 ScoreboardSettings.DEFAULTS);
     }
 }

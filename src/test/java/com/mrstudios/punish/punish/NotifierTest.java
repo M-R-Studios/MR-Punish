@@ -51,7 +51,7 @@ class NotifierTest {
         Settings settings = new SettingsLoader(name -> true, List.of(), Set.of(), SettingsLoader.bundledDefaults())
                 .defaults();
         state = new PluginState(settings, new MessagesLoader(MessagesLoader.bundledDefaults()).defaults(),
-                GuiSettings.DEFAULTS, new RankLoader(name -> true, RankLoader.bundledDefaults()).defaults(),
+                new com.mrstudios.punish.config.GuiLoader().defaults(), new RankLoader(name -> true, RankLoader.bundledDefaults()).defaults(),
                 ScoreboardSettings.DEFAULTS);
         Logger log = Logger.getAnonymousLogger();
         log.setUseParentHandlers(false);

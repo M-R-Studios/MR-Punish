@@ -315,8 +315,17 @@ login:
   timeout-ms: 3000
 
 input:
+  # Seconds to type something in chat (a note) before the prompt is cancelled. Range 10-600.
+  chat-timeout-seconds: 60
+  # Typing this word cancels a chat prompt.
+  cancel-word: cancel
   # Maximum length of typed text: notes and removal reasons. Longer text is cut. Range 16-500.
   max-text-length: 200
+
+bedrock:
+  # Use Floodgate (if installed) to show Bedrock players a form for typing text instead of chat.
+  # Changing this needs a restart.
+  floodgate: true
 
 # Turn MR-Punish commands off so that another plugin or vanilla gets that label instead, and add
 # extra labels. The namespaced form (e.g. /mr-punish:ban) always works. Changing these needs a restart.
@@ -324,6 +333,7 @@ input:
 # other plugin. More entries appear here as their commands are added to MR-Punish. /mrpunish itself
 # (aliases /staffhelper and /mrp) is always on.
 commands:
+  punish: { enabled: true, aliases: [p] }
   ban:   { enabled: true, aliases: [] }
   unban: { enabled: true, aliases: [] }
   warn:   { enabled: true, aliases: [] }

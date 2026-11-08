@@ -42,7 +42,7 @@ public final class SettingsLoader {
 
     private static final Set<String> TOP_LEVEL = Set.of("config-version", "escalation", "fallback-reasons", "reasons",
             "commands", "storage", "server-name", "warnings", "announcements", "hooks", "sounds", "date-format",
-            "time-zone", "appeal-link", "ban", "login", "input", "mute", "ip");
+            "time-zone", "appeal-link", "ban", "login", "input", "mute", "ip", "bedrock");
     private static final Set<String> REASON_FIELDS = Set.of("type", "display", "description", "icon", "slot", "aliases",
             "escalation", "history-period", "permission", "enabled");
     private static final Set<String> TOGGLE_FIELDS = Set.of("enabled", "aliases");
@@ -237,11 +237,16 @@ public final class SettingsLoader {
                 r.bool("mute.block-books", true), r.wholeNumber("mute.notify-cooldown-seconds", 0, 3600, 3));
         warnUnknownIn(yaml, "mute", Set.of("blocked-commands", "block-signs", "block-books",
                 "notify-cooldown-seconds"), warnings);
-        warnUnknownIn(yaml, "input", Set.of("max-text-length"), warnings);
+        Settings.Input input = new Settings.Input(r.wholeNumber("input.chat-timeout-seconds", 10, 600, 60),
+                r.text("input.cancel-word", "cancel", s -> !s.isEmpty() && s.chars().noneMatch(Character::isWhitespace),
+                        "a single word").toLowerCase(Locale.ROOT));
+        warnUnknownIn(yaml, "input", Set.of("max-text-length", "chat-timeout-seconds", "cancel-word"), warnings);
+        boolean floodgate = r.bool("bedrock.floodgate", true);
+        warnUnknownIn(yaml, "bedrock", Set.of("floodgate"), warnings);
 
         return LoadResult.loaded(new Settings(historyPeriod, registry, commands, storage, serverName, activeFor,
                 announcements, luckperms, notify, display, login, kickOnline, maxText, punished, failed, warnTitle,
-                mute, warned, ip), warnings);
+                mute, warned, ip, input, floodgate), warnings);
     }
 
     private Settings.SoundSetting sound(YamlReader r, String section, Settings.SoundSetting def) {

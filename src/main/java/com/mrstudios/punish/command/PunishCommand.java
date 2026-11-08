@@ -4,6 +4,7 @@ import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mrstudios.punish.MRPunish;
+import com.mrstudios.punish.gui.PunishMenus;
 import com.mrstudios.punish.punish.Punishment;
 import com.mrstudios.punish.punish.PunishmentService;
 import com.mrstudios.punish.punish.PunishmentType;
@@ -13,13 +14,14 @@ import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 
 /**
  * {@code /warn}, {@code /mute} and {@code /ban <player> [-s] <reason> [note...]} (DESIGN.md 4.1). The
  * first word picks a reason of the command's type (key or alias); anything else falls back to the
  * type's fallback reason with the whole text as the note. Durations come from the reason's escalation.
- * Until the punish menu exists (step 7), a punishment from a player applies straight away, as it
- * does from console.
+ * From a player, a mute or ban opens the confirmation menu ({@code -s} pre-sets silent) and no reason
+ * opens the reason menu; a warning with a reason applies straight away. Console applies directly.
  */
 public final class PunishCommand implements CommandRegistry.Switchable {
 
@@ -100,12 +102,42 @@ public final class PunishCommand implements CommandRegistry.Switchable {
             return 0;
         }
         CommandArgs.Parsed parsed = CommandArgs.parse(rest);
-        if (parsed.text().isEmpty()) {
+        Player staff = sender instanceof Player p ? p : null;
+        if (parsed.text().isEmpty() && staff == null) {
             return usage(sender);
+        }
+        if (type.isIp() && !plugin.ip().enabled()) {
+            shared.messages().send(sender, "punish.ip-disabled");
+            return 0;
+        }
+        if (parsed.text().isEmpty()) {
+            // A player without a reason picks one in the reason menu (DESIGN.md 10.3).
+            shared.withTarget(staff, player, found -> {
+                if (staff.isOnline()) {
+                    plugin.menus().openReasons(staff, new PunishMenus.Flow(found.uuid(), found.name(), null,
+                            parsed.silent(), true), type);
+                }
+            });
+            return Command.SINGLE_SUCCESS;
         }
         ReasonRegistry reasons = plugin.state().settings().reasons();
         ReasonRegistry.Resolution resolution = reasons.resolve(type, parsed.text()).orElseThrow();
         String note = shared.cleaned(resolution.note());
+        if (staff != null && type.hasDuration()) {
+            // Mutes and bans from a player go through the confirmation menu (DESIGN.md 10.4).
+            if (!ReasonRegistry.mayUse(resolution.reason(), staff::hasPermission)) {
+                shared.messages().send(staff, "punish.reason-no-permission",
+                        Placeholder.parsed("reason", resolution.reason().display()));
+                return 0;
+            }
+            shared.withTarget(staff, player, found -> {
+                if (staff.isOnline()) {
+                    plugin.menus().openConfirm(staff, new PunishMenus.Flow(found.uuid(), found.name(), note,
+                            parsed.silent(), true), resolution.reason());
+                }
+            });
+            return Command.SINGLE_SUCCESS;
+        }
         shared.withTarget(sender, player, found -> {
             java.util.function.Consumer<Requests.Target> issue = target -> {
                 // Read again at the moment of the action (DESIGN.md 2.1 #4).

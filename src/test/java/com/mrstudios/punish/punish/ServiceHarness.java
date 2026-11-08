@@ -68,7 +68,7 @@ final class ServiceHarness implements AutoCloseable {
         Settings settings = new SettingsLoader(name -> true, List.of(), Set.of(), SettingsLoader.bundledDefaults())
                 .defaults();
         state = new PluginState(settings, new MessagesLoader(MessagesLoader.bundledDefaults()).defaults(),
-                GuiSettings.DEFAULTS, new RankLoader(name -> true, RankLoader.bundledDefaults()).defaults(),
+                new com.mrstudios.punish.config.GuiLoader().defaults(), new RankLoader(name -> true, RankLoader.bundledDefaults()).defaults(),
                 ScoreboardSettings.DEFAULTS);
         storage = new Storage(settings.storage(), s -> new SqliteDatabase(dir.resolve("punishments.db").toFile()),
                 Migrations.shipped(clock::get), log);

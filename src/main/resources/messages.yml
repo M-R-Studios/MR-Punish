@@ -40,6 +40,8 @@ punish:
   exempt: "<prefix><red><player> is exempt. Only console can punish them."
   reason-no-permission: "<prefix><red>You can't use the reason <reason>."
   busy: "<prefix><gray>Still saving the previous action…"
+  # Someone else punished the player between the preview and the confirm click; the menu reopens.
+  changed: "<prefix><yellow>Someone punished <player> while you were deciding. Check the new preview."
 
 unpunish:
   removed: "<prefix><green>Removed <count> <type>(s) from <white><player></white> <gray>(<ids>)."
@@ -48,6 +50,16 @@ unpunish:
   self: "<prefix><red>You can't remove your own punishment."
   failed: "<prefix><red>The removal could not be saved, so nothing was removed (error <error-id>)."
   unwarn-not-found: "<prefix><red>No active warning #<id> for <player>."
+
+# Typing text (notes) in chat, or in a form on Bedrock.
+input:
+  prompt-note: "<prefix><gray>Type a note for <white><player></white> in chat, or <white><cancel-word></white> to go back."
+  prompt-timeout: "<prefix><gray>Input timed out."
+  prompt-cancelled: "<prefix><gray>Cancelled."
+  too-long: "<prefix><red>That's too long (max <max> characters). Try again."
+  empty: "<prefix><red>That was empty. Try again or type <cancel-word>."
+  form-title-note: "Note"
+  form-label: "Type here"
 
 # Sent to the punished player
 target:

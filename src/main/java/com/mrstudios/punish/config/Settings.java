@@ -28,12 +28,14 @@ import org.bukkit.NamespacedKey;
  * @param mute          what a muted player can't do
  * @param warnedSound   played to the warned player
  * @param ip            IP punishments and tracking
+ * @param input         chat prompts
+ * @param floodgate     use Floodgate forms for Bedrock players (read at startup)
  */
 public record Settings(TimeSpan historyPeriod, ReasonRegistry reasons, Map<String, CommandToggle> commands,
         Storage storage, String serverName, TimeSpan warningActiveFor, Map<PunishmentType, Boolean> announcements,
         boolean luckperms, SoundSetting notifySound, Display display, Login login, boolean banKickOnline,
         int maxTextLength, SoundSetting punishedSound, SoundSetting failedSound, boolean warnTitle, Mute mute,
-        SoundSetting warnedSound, Ip ip) {
+        SoundSetting warnedSound, Ip ip, Input input, boolean floodgate) {
 
     public Settings {
         commands = Map.copyOf(commands);
@@ -78,6 +80,10 @@ public record Settings(TimeSpan historyPeriod, ReasonRegistry reasons, Map<Strin
      */
     public record Ip(boolean enabled, int associationDays, int retentionDays, int ipv6Prefix,
             boolean purgeWhenDisabled) {
+    }
+
+    /** {@code input.*}: how long a chat prompt waits, and the word that cancels it (lower case). */
+    public record Input(int chatTimeoutSeconds, String cancelWord) {
     }
 
     public enum FailPolicy {

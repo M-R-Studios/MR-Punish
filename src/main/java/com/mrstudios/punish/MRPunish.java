@@ -23,6 +23,15 @@ import com.mrstudios.punish.rank.OfflineRanks;
 import com.mrstudios.punish.rank.RankCache;
 import com.mrstudios.punish.rank.RankRegistrar;
 import com.mrstudios.punish.command.PunishCommand;
+import com.mrstudios.punish.command.PunishMenuCommand;
+import com.mrstudios.punish.gui.BedrockForms;
+import com.mrstudios.punish.gui.DisplayGuard;
+import com.mrstudios.punish.gui.Items;
+import com.mrstudios.punish.gui.MenuHolder;
+import com.mrstudios.punish.gui.MenuListener;
+import com.mrstudios.punish.gui.PromptService;
+import com.mrstudios.punish.gui.PunishMenus;
+import com.mrstudios.punish.hook.FloodgateHook;
 import com.mrstudios.punish.command.RemoveCommand;
 import com.mrstudios.punish.enforce.CommandLabelResolver;
 import com.mrstudios.punish.enforce.MuteCache;
@@ -88,6 +97,10 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
     private PunishmentService punishments;
     private BanEnforcement bans;
     private MuteEnforcement mutes;
+    private PromptService prompts;
+    private PunishMenus menus;
+    /** {@code bedrock.floodgate} as at startup (changing it needs a restart). */
+    private boolean floodgateSetting;
     private IpFeatures ip;
     /** Whether the LuckPerms hook was set up at startup (changing that needs a restart). */
     private boolean luckPermsHooked;
@@ -110,7 +123,7 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
         List<CommandRegistry.Switchable> switchable = List.of(PunishCommand.ban(this), RemoveCommand.unban(this),
                 PunishCommand.warn(this), RemoveCommand.unwarn(this), PunishCommand.mute(this),
                 RemoveCommand.unmute(this), PunishCommand.muteip(this), PunishCommand.banip(this),
-                RemoveCommand.unmuteip(this), RemoveCommand.unbanip(this));
+                RemoveCommand.unmuteip(this), RemoveCommand.unbanip(this), new PunishMenuCommand(this));
         Set<String> reserved = new HashSet<>(AdminCommand.ALIASES);
         reserved.add(AdminCommand.LABEL);
 
@@ -119,7 +132,7 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
                         CommandRegistry.names(switchable), reserved,
                         SettingsLoader.bundledDefaults()),
                 new MessagesLoader(MessagesLoader.bundledDefaults()),
-                new GuiLoader(),
+                new GuiLoader(MRPunish::isItem, key -> Registry.SOUNDS.get(key) != null, GuiLoader.bundledDefaults()),
                 new RankLoader(name -> getServer().getPluginManager().getPermission(name) != null,
                         RankLoader.bundledDefaults()),
                 new ScoreboardLoader());
@@ -185,6 +198,7 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
                 System::currentTimeMillis, getLogger());
         getServer().getPluginManager().registerEvents(mutes, this);
         punishments.addListener(mutes);
+        startMenus();
         // Players already online (after /reload): their connection's IP hash, before their mutes load.
         for (Player player : getServer().getOnlinePlayers()) {
             bans.track(player);
@@ -385,8 +399,46 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
                 });
     }
 
+    /** Menus, their item guard and text prompts (DESIGN.md 10.1, 12.2). */
+    private void startMenus() {
+        BedrockForms forms = BedrockForms.NONE;
+        floodgateSetting = state.settings().floodgate();
+        if (state.settings().floodgate() && getServer().getPluginManager().isPluginEnabled("floodgate")) {
+            try {
+                forms = new FloodgateHook();
+                getLogger().info("Hooked into Floodgate: Bedrock players type notes in a form.");
+            } catch (LinkageError | RuntimeException e) {
+                getLogger().warning("Couldn't hook into Floodgate (" + e + "); Bedrock players type notes in chat.");
+            }
+        }
+        Items items = new Items();
+        prompts = new PromptService(this, () -> state, forms);
+        getServer().getPluginManager().registerEvents(prompts, this);
+        mutes.skipChatWhile(prompts::waiting);
+        getServer().getPluginManager().registerEvents(new MenuListener(this), this);
+        getServer().getPluginManager().registerEvents(new DisplayGuard(items, getLogger()), this);
+        menus = new PunishMenus(this, items, prompts);
+    }
+
+    public PunishMenus menus() {
+        return menus;
+    }
+
+    public PromptService prompts() {
+        return prompts;
+    }
+
     @Override
     public void onDisable() {
+        if (prompts != null) {
+            prompts.dropAll();
+        }
+        // Nobody keeps a menu of a disabled plugin open.
+        for (Player player : getServer().getOnlinePlayers()) {
+            if (MenuHolder.of(player.getOpenInventory().getTopInventory()) != null) {
+                player.closeInventory();
+            }
+        }
         if (storage == null) {
             return;
         }
@@ -554,6 +606,9 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
                 && getServer().getPluginManager().isPluginEnabled("LuckPerms");
         if (loaded.settings().ok() && wantLuckPerms != luckPermsHooked) {
             restartNeeded.add("hooks.luckperms");
+        }
+        if (loaded.settings().ok() && updated.settings().floodgate() != floodgateSetting) {
+            restartNeeded.add("bedrock.floodgate");
         }
 
         Messages messages = updated.messages();

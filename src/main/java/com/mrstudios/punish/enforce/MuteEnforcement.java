@@ -93,8 +93,18 @@ public final class MuteEnforcement implements Listener, PunishmentService.Listen
                 ? byIp : own;
     }
 
+    /** Staff typing into a menu prompt: their chat line is input, not chat (DESIGN.md 12.2). */
+    private volatile java.util.function.Predicate<java.util.UUID> typingInput = uuid -> false;
+
+    public void skipChatWhile(java.util.function.Predicate<java.util.UUID> typing) {
+        this.typingInput = typing;
+    }
+
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onChat(AsyncChatEvent event) {
+        if (typingInput.test(event.getPlayer().getUniqueId())) {
+            return;
+        }
         Optional<Punishment> mute = muteOf(event.getPlayer());
         if (mute.isPresent()) {
             event.setCancelled(true);

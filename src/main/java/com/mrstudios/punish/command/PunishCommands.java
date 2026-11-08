@@ -35,22 +35,22 @@ import org.bukkit.entity.Player;
  * What every punishment command shares: who the actor is, resolving the player argument, sending
  * the outcome, and tab completion from memory only (DESIGN.md 4.1).
  */
-final class PunishCommands {
+public final class PunishCommands {
 
     private static final int MAX_SUGGESTIONS = 20;
 
     private final MRPunish plugin;
 
-    PunishCommands(MRPunish plugin) {
+    public PunishCommands(MRPunish plugin) {
         this.plugin = plugin;
     }
 
-    Messages messages() {
+    public Messages messages() {
         return plugin.state().messages();
     }
 
     /** The actor, read now on the main thread. Non-player senders act as console. */
-    Requests.Actor actor(CommandSender sender) {
+    public Requests.Actor actor(CommandSender sender) {
         if (sender instanceof Player player) {
             return new Requests.Actor(plugin.rankCache().standing(player), player::hasPermission);
         }
@@ -62,7 +62,7 @@ final class PunishCommands {
      * Resolves {@code input} and calls {@code then} on the main thread with the target, or tells the
      * sender it's invalid or unknown.
      */
-    void withTarget(CommandSender sender, String input, Consumer<Requests.Target> then) {
+    public void withTarget(CommandSender sender, String input, Consumer<Requests.Target> then) {
         plugin.targets().resolve(input).whenComplete((resolution, error) ->
                 plugin.getServer().getScheduler().runTask(plugin, () -> {
                     if (error != null) {
@@ -80,7 +80,7 @@ final class PunishCommands {
     }
 
     /** An online target's standing is read live, now. */
-    Requests.Target target(TargetResolver.Target found) {
+    public Requests.Target target(TargetResolver.Target found) {
         Player online = plugin.getServer().getPlayer(found.uuid());
         return online != null
                 ? Requests.Target.online(plugin.rankCache().standing(online))
@@ -92,10 +92,17 @@ final class PunishCommands {
      * recent one seen) and the accounts associated with it, then calls {@code then} on the main thread
      * with a target carrying the hash and every other affected account. Never shows the IP.
      */
-    void withIpTarget(CommandSender sender, Requests.Target target, Consumer<Requests.Target> then) {
+    public void withIpTarget(CommandSender sender, Requests.Target target, Consumer<Requests.Target> then) {
+        withIpTarget(sender, target, then, () -> { });
+    }
+
+    /** As above; {@code failed} runs (main thread) after the sender was told why there's no target. */
+    public void withIpTarget(CommandSender sender, Requests.Target target, Consumer<Requests.Target> then,
+            Runnable failed) {
         com.mrstudios.punish.ip.IpFeatures ip = plugin.ip();
         if (!ip.enabled()) {
             messages().send(sender, "punish.ip-disabled");
+            failed.run();
             return;
         }
         java.util.Optional<String> onlineHash = ip.onlineHash(target.uuid());
@@ -111,10 +118,12 @@ final class PunishCommands {
         }).whenComplete((found, error) -> plugin.getServer().getScheduler().runTask(plugin, () -> {
             if (error != null) {
                 messages().send(sender, "general.storage-unavailable");
+                failed.run();
                 return;
             }
             if (found == null) {
                 messages().send(sender, "punish.ip-unknown", Placeholder.unparsed("player", target.name()));
+                failed.run();
                 return;
             }
             String hash = (String) found[0];
@@ -166,13 +175,13 @@ final class PunishCommands {
                 }));
     }
 
-    String cleaned(String text) {
+    public String cleaned(String text) {
         return CommandArgs.clean(text, plugin.state().settings().maxTextLength());
     }
 
     // ---- Outcomes ----
 
-    void report(CommandSender sender, Requests.Issue request, IssueResult result) {
+    public void report(CommandSender sender, Requests.Issue request, IssueResult result) {
         PluginState state = plugin.state();
         Messages m = state.messages();
         String player = request.target().name();
@@ -237,7 +246,7 @@ final class PunishCommands {
                 m.send(sender, "punish.failed", Placeholder.unparsed("error-id", f.errorId()));
                 sound(sender, state.settings().failedSound());
             }
-            case IssueResult.Changed ch -> m.send(sender, "punish.busy");
+            case IssueResult.Changed ch -> m.send(sender, "punish.changed", Placeholder.unparsed("player", player));
         }
     }
 

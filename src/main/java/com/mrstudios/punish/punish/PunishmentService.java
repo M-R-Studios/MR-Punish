@@ -125,6 +125,34 @@ public final class PunishmentService {
         });
     }
 
+    /**
+     * {@link #preview} for several reasons of one type in one database task (the reason menu,
+     * DESIGN.md 10.3). Keyed by reason key, in the given order.
+     */
+    public CompletableFuture<java.util.Map<String, Preview>> previewAll(Requests.Target target, PunishmentType type,
+            List<Reason> reasons) {
+        Settings settings = state.get().settings();
+        long now = clock.getAsLong();
+        PunishmentRepo.Subject subject = PunishmentRepo.Subject.of(type, target.uuid(), target.ipHash());
+        return storage.executor().submit("previewing punishments for " + target.name(), c -> {
+            PunishmentRepo repo = new PunishmentRepo(storage.database());
+            List<ReplacementRules.Active> active = new ArrayList<>();
+            if (type.hasDuration()) {
+                for (Punishment p : repo.active(c, type, subject, now)) {
+                    active.add(new ReplacementRules.Active(p.id(), p.expiresAt()));
+                }
+            }
+            java.util.Map<String, Preview> previews = new java.util.LinkedHashMap<>();
+            for (Reason reason : reasons) {
+                if (reason.type() == type) {
+                    previews.put(reason.key(), EscalationCalculator.preview(reason, settings.historyPeriod(),
+                            repo.priors(c, type, reason.key(), subject), active, now));
+                }
+            }
+            return previews;
+        });
+    }
+
     /** Issues a punishment (DESIGN.md 7.10). Main thread. */
     public CompletableFuture<IssueResult> issue(Requests.Issue request) {
         PluginState snapshot = state.get();

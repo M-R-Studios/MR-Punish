@@ -1,6 +1,138 @@
 # MR-Punish GUIs. Every title, slot, item, name, lore line and sound can be changed.
 # Names and lore use MiniMessage. Slots are 0-based (row * 9 + column).
-# The menus' settings appear here as the menus are added to MR-Punish.
+# Every item has: material, name, lore (list), and optionally glint: true and custom-model-data (a number).
+# Nothing can be taken out of, moved in or put into any MR-Punish menu.
 
 # Do not change. Used to upgrade this file automatically when the plugin updates.
 gui-version: 1
+
+# The item in every empty slot.
+filler: { material: GRAY_STAINED_GLASS_PANE, name: " " }
+
+# What staff see for a button they don't have permission for.
+# GREY: show the item below instead (<name> is the button's name). HIDE: show filler.
+no-permission:
+  mode: GREY
+  item: { material: GRAY_DYE, name: "<gray><name>", lore: ["<red>You don't have permission."] }
+
+# Each sound: enabled, sound key, volume (0.0-10.0), pitch (0.5-2.0).
+sounds:
+  # A button was clicked.
+  click:  { enabled: true, sound: minecraft:ui.button.click, volume: 0.6, pitch: 1.0 }
+  # A button was refused (no permission, or not possible right now).
+  denied: { enabled: true, sound: minecraft:block.note_block.bass, volume: 0.8, pitch: 0.5 }
+
+# Names of the punishment types in menus (<type-name>).
+type-names: { WARN: Warning, MUTE: Mute, BAN: Ban, IP_MUTE: IP mute, IP_BAN: IP ban }
+
+common:
+  close:    { material: BARRIER, name: "<red>Close" }
+  back:     { material: ARROW, name: "<gray>Back" }
+  # Shown where data goes until it has loaded.
+  loading:  { material: CLOCK, name: "<gray>Loading…" }
+
+# /punish <player>
+punish-menu:
+  title: "Punish <player>"
+  rows: 5
+  head:
+    slot: 4
+    # The player's head. <uuid>, <status>, <rank>, <active>, <total>; <previous> becomes one line per entry.
+    name: "<white><player>"
+    lore:
+      - "<dark_gray><uuid>"
+      - "<gray>Status: <status>"
+      - "<gray>Rank: <rank>"
+      - "<gray>Active punishments: <white><active>"
+      - "<gray>Total punishments: <white><total>"
+      - "<gray>Previous offences:"
+      - "<previous>"
+    online: "<green>online"
+    offline: "<red>offline <gray>(last seen <date>)"
+    # Shown as the rank of players without one.
+    no-rank: "<gray>Player"
+    # One line per previous punishment (the last 3); <none> when there are none.
+    previous-line: "<dark_gray>- <gray><type> <white><reason> <dark_gray><date>"
+    none: "<dark_gray>none"
+  # One button per type. <active> is the player's active count of that type.
+  categories:
+    WARN:    { slot: 19, material: PAPER,         name: "<yellow>Warnings", lore: ["<gray>Active: <white><active>", "<gray>Applied immediately."] }
+    MUTE:    { slot: 20, material: BOOK,          name: "<gold>Mutes",    lore: ["<gray>Active: <white><active>"] }
+    BAN:     { slot: 21, material: IRON_AXE,      name: "<red>Bans",      lore: ["<gray>Active: <white><active>"] }
+    IP_MUTE: { slot: 23, material: WRITABLE_BOOK, name: "<gold>IP Mutes", lore: ["<gray>Active: <white><active>", "<dark_gray>Affects every account on the IP."] }
+    IP_BAN:  { slot: 24, material: NETHERITE_AXE, name: "<dark_red>IP Bans", lore: ["<gray>Active: <white><active>", "<dark_gray>Affects every account on the IP."] }
+  # Added to the IP buttons while IP features are off (they can't be used then).
+  ip-disabled-lore: ["<dark_gray>IP features are off."]
+  close-slot: 40
+
+# The reasons of one type, with what each would do now.
+reason-menu:
+  title: "<type-name> – <player>"
+  rows: 6
+  # Reasons without a slot in config.yml fill these slots in order.
+  slots: [10, 11, 12, 13, 14, 15, 16, 19, 20, 21, 22, 23, 24, 25, 28, 29, 30, 31, 32, 33, 34]
+  reason-lore:
+    - "<description>"
+    - ""
+    - "<gray>Offence: <white><offence-ordinal>"
+    - "<gray>Previous: <white><previous></white> in the last <period>"
+    - "<gray>Next punishment: <white><next>"
+    - "<gray>Escalation: <ladder>"
+    - ""
+    - "<action>"
+  # <period> when a reason counts every earlier offence.
+  period-forever: "all time"
+  # <next>: what the click would give.
+  next-warn: "Warning"
+  next-timed: "<type-name> for <duration>"
+  next-permanent: "<type-name>, permanent"
+  # <ladder>: the escalation steps, the one that would be used now highlighted.
+  ladder-step: "<gray><duration>"
+  ladder-current: "<white><u><duration></u>"
+  ladder-separator: "<dark_gray> → "
+  # <ladder> of warnings (they have no durations).
+  ladder-none: "<dark_gray>none"
+  # <action>: what clicking does.
+  action-warn: "<green>Click to warn"
+  action-review: "<yellow>Click to review"
+  action-replaces: "<yellow>Replaces #<id> · click to review"
+  action-blocked: "<red>Blocked: active <type-name> #<id> ends later (<remaining> left)"
+  note:
+    slot: 49
+    material: NAME_TAG
+    name: "<white>Note"
+    lore: ["<gray><note>", "", "<yellow>Click to type a note", "<gray>Shift-click to clear"]
+    # <note> when there is none.
+    empty: "<dark_gray>none"
+  back-slot: 45
+
+# Shown before a mute, ban, IP mute or IP ban is applied.
+confirm-menu:
+  title: "Confirm <type-name>"
+  rows: 3
+  summary:
+    slot: 4
+    material: PAPER
+    name: "<white><type-name>: <player>"
+    lore:
+      - "<gray>Reason: <white><reason>"
+      - "<gray>Offence: <white><offence-ordinal>"
+      - "<gray>Duration: <white><duration>"
+      - "<gray>Ends: <white><end>"
+      - "<replaces>"
+      - "<accounts>"
+      - "<gray>Note: <white><note>"
+  # <replaces> and <accounts> lines; empty when they don't apply.
+  replaces-line: "<yellow>Replaces #<id>"
+  accounts-line: "<gray>Affects <white><accounts></white> associated account(s)"
+  # <end> of a permanent punishment.
+  never: "never"
+  confirm: { slot: 11, material: LIME_CONCRETE, name: "<green><bold>Confirm", lore: ["<gray><type-name> <player> for <duration>"] }
+  note:    { slot: 13, material: NAME_TAG, name: "<white>Note", lore: ["<gray><note>", "<yellow>Click to change", "<gray>Shift-click to clear"] }
+  cancel:  { slot: 15, material: RED_CONCRETE, name: "<red><bold>Cancel" }
+  silent:
+    slot: 22
+    when-on:  { material: ENDER_EYE, name: "<gray>Silent: <green>on", lore: ["<gray>No public announcement."] }
+    when-off: { material: ENDER_PEARL, name: "<gray>Silent: <red>off", lore: ["<gray>Announced if enabled in config."] }
+  # Shown on the confirm button while the punishment is being saved.
+  submitting: { material: CLOCK, name: "<gray>Saving…" }

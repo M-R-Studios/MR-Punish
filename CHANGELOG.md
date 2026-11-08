@@ -24,3 +24,9 @@
 - IP punishments, off by default (`ip.enabled`): `/banip`, `/muteip`, `/unbanip`, `/unmuteip`. Only keyed hashes of IP addresses are stored (secret in `ip-secret.key`); no address is ever shown, logged or stored. Every account on the IP is affected, accounts seen on it recently are rank-checked, and staff see only an account count.
 - `/mrpunish import vanilla` also imports vanilla IP bans when IP features are on.
 - `/mrpunish version` shows whether IP features are on.
+- `/punish <player>` (alias `/p`): a menu with the player's head and history summary, a reason menu per type showing each reason's offence number, escalation ladder and next punishment (and whether it replaces or is blocked by an active one), and a confirmation with the calculated duration, a silent toggle and a note. Warnings apply on click.
+- Notes for the punish menus are typed in chat, or in a form for Bedrock players when Floodgate is installed (`bedrock.floodgate`).
+- `gui.yml` now lays out every menu: titles, slots, items, lore, sounds and how buttons without permission look (`no-permission.mode`).
+
+### Changed
+- `/mute` and `/ban` (and `/muteip`, `/banip`) from a player now open the confirmation menu instead of applying straight away; without a reason, `/warn`, `/mute` and `/ban` open the reason menu. Console is unchanged.
