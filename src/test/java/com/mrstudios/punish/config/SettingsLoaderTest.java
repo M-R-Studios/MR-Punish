@@ -14,8 +14,11 @@ import org.junit.jupiter.api.Test;
 class SettingsLoaderTest {
 
     /** Any material is an item except names starting with NOT_. */
+    /** The commands the plugin ships that config.yml can switch. */
+    static final List<String> SHIPPED_COMMANDS = List.of("ban", "unban");
+
     private static SettingsLoader loader() {
-        return loader(List.of());
+        return loader(SHIPPED_COMMANDS);
     }
 
     private static SettingsLoader loader(List<String> switchable) {
@@ -259,12 +262,14 @@ class SettingsLoaderTest {
     @Test
     void commandToggles() {
         SettingsLoader loader = loader(List.of("ban", "mute"));
-        String text = edited("commands: {}", """
+        String text = edited("""
+                commands:
+                  ban:   { enabled: true, aliases: [] }
+                  unban: { enabled: true, aliases: [] }""", """
                 commands:
                   ban: { enabled: false, aliases: [tempban, "bad label", mrp] }
                   mute: { enabled: true, aliases: [tempban, silence] }
-                  fly: { enabled: false }
-                """);
+                  fly: { enabled: false }""");
         LoadResult<Settings> result = loader.load(text);
         assertTrue(result.ok(), result.error());
         Settings settings = result.value();
@@ -278,15 +283,21 @@ class SettingsLoaderTest {
 
     @Test
     void missingCommandToggleWarnsAndIsOn() {
-        LoadResult<Settings> result = loader(List.of("ban")).load(bundledText());
-        assertTrue(has(result, "commands.ban is missing, using enabled: true"));
+        LoadResult<Settings> result = loader(List.of("ban", "unban", "mute")).load(bundledText());
+        assertTrue(has(result, "commands.mute is missing, using enabled: true"), result.warnings().toString());
+        assertEquals(CommandToggle.DEFAULT, result.value().command("mute"));
         assertEquals(CommandToggle.DEFAULT, result.value().command("ban"));
     }
 
     @Test
-    void shippedCommandsSectionIsEmptyAndAnyEntryWarnsForNow() {
-        LoadResult<Settings> result = loader().load(edited("commands: {}", "commands:\n  ban: { enabled: false }"));
-        assertTrue(has(result, "commands.ban is not an MR-Punish command that can be turned off"));
+    void shippedCommandsAreBanAndUnbanAndUnknownEntriesWarn() {
+        Settings shipped = loader().load(bundledText()).value();
+        assertEquals(CommandToggle.DEFAULT, shipped.command("ban"));
+        assertEquals(CommandToggle.DEFAULT, shipped.command("unban"));
+        LoadResult<Settings> result = loader().load(edited("  unban: { enabled: true, aliases: [] }",
+                "  unban: { enabled: false, aliases: [pardon2] }\n  kick: { enabled: false }"));
+        assertEquals(new CommandToggle(false, List.of("pardon2")), result.value().command("unban"));
+        assertTrue(has(result, "commands.kick is not an MR-Punish command that can be turned off"));
     }
 
     @Test

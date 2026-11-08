@@ -10,6 +10,14 @@ config-version: 1
 # MySQL database. Empty = "default". At most 32 characters.
 server-name: ""
 
+# Date format for messages and the ban screen (a Java DateTimeFormatter pattern), and the time zone
+# ("system" = the server's time zone, or an ID such as "Europe/Warsaw").
+date-format: "yyyy-MM-dd HH:mm"
+time-zone: system
+
+# Link shown on the ban screen as <appeal-link>.
+appeal-link: "https://discord.gg/your-server"
+
 escalation:
   # How far back previous punishments of the same type and reason are counted when working out
   # the next escalation step. A reason can override this with its own history-period.
@@ -257,12 +265,35 @@ announcements:
   IP_MUTE: false
   IP_BAN: true
 
+ban:
+  # Kick the banned player straight away if they're online. The ban always blocks joining.
+  kick-online: true
+
+login:
+  # What to do when a joining player's punishments can't be checked (database down or too slow).
+  # CACHE: use the in-memory copy of active bans. A player banned in the copy is denied. Others are
+  #        let in and checked again once the database is back. If the copy was never loaded
+  #        (database down since startup), the player is denied with the "try again" screen.
+  # DENY:  deny everyone who can't be checked, with the "try again" screen.
+  # ALLOW: let everyone in and check them again once the database is back. Banned players can
+  #        get in while it's down, so only use this if downtime costs you more than that.
+  # Every failure is logged, and online players with mrpunish.admin are alerted (at most once a minute).
+  fail-policy: CACHE
+  # Milliseconds to wait for the database during login before applying the fail policy. Range 500-10000.
+  timeout-ms: 3000
+
+input:
+  # Maximum length of typed text: notes and removal reasons. Longer text is cut. Range 16-500.
+  max-text-length: 200
+
 # Turn MR-Punish commands off so that another plugin or vanilla gets that label instead, and add
 # extra labels. The namespaced form (e.g. /mr-punish:ban) always works. Changing these needs a restart.
-# Each entry looks like:  ban: { enabled: true, aliases: [] }
-# Entries appear here as the commands they belong to are added to MR-Punish. /mrpunish itself
+# When a command is off, /mr-punish:<name> still works and the plain label stays with vanilla or the
+# other plugin. More entries appear here as their commands are added to MR-Punish. /mrpunish itself
 # (aliases /staffhelper and /mrp) is always on.
-commands: {}
+commands:
+  ban:   { enabled: true, aliases: [] }
+  unban: { enabled: true, aliases: [] }
 
 storage:
   # SQLITE (a file in plugins/MR-Punish/) or MYSQL (also MariaDB). Changing this needs a restart.
@@ -299,3 +330,7 @@ sounds:
   # Each sound: enabled, sound key (e.g. minecraft:block.note_block.pling), volume (0.0-10.0), pitch (0.5-2.0).
   # Played to staff with each punishment or removal notification.
   notify: { enabled: true, sound: minecraft:block.note_block.pling, volume: 0.6, pitch: 1.4 }
+  # Played to the staff member when a punishment is applied.
+  punished: { enabled: true, sound: minecraft:block.anvil.land, volume: 0.6, pitch: 1.0 }
+  # Played to the staff member when an action is refused or fails.
+  failed: { enabled: true, sound: minecraft:entity.villager.no, volume: 1.0, pitch: 1.0 }

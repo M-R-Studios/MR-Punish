@@ -28,6 +28,14 @@ The tables are created on first start and upgraded automatically when MR-Punish 
 
 If the database can't be reached at startup or goes away while the server runs, MR-Punish keeps running in a degraded mode. It doesn't save anything, tells online admins (`mrpunish.admin`) and every admin who joins, and tries again every 30 seconds until the database is back. `/mrpunish version` shows whether storage is connected and why not.
 
+## Bans
+
+`/ban <player> [-s] <reason> [note...]` bans with the reason's next escalation step from `config.yml`: the first word picks a ban reason by its key or one of its aliases, and the rest is a staff note. If the first word isn't a ban reason, the "other" ban reason is used and the whole text becomes the note. `-s` (anywhere after the name) skips the public announcement; staff are still notified. A new ban can never end sooner than an active one (remove it first to shorten it), and history is never deleted: replaced and removed bans stay visible with who, when and why. `/unban` removes every active ban of the player.
+
+Bans are checked against the database at every login. If the database can't answer in time, `login.fail-policy` decides: `CACHE` (default) uses an in-memory copy of active bans, `DENY` refuses everyone who can't be checked, and `ALLOW` lets everyone in. Players let in without a check are checked again as soon as the database answers, and kicked if they're banned. Admins are told whenever logins can't be checked.
+
+**Vanilla bans.** MR-Punish doesn't read or change vanilla's ban list, and vanilla bans keep working by themselves (a player in vanilla's list is still refused by vanilla). Vanilla's own command stays available as `/minecraft:ban`, and `/pardon` only affects vanilla bans. `/mrpunish import vanilla` copies vanilla's player bans into MR-Punish once (running it again imports nothing new); `--clear` then removes the imported entries from the vanilla list. At startup the console says if vanilla bans exist.
+
 ## Staff ranks
 
 Ranks are defined in `plugins/MR-Punish/permissions.yml`. Each rank has a permission node, a weight and a list of permissions it grants. Give staff the rank node in your permissions plugin, for example with LuckPerms:
@@ -36,17 +44,22 @@ Ranks are defined in `plugins/MR-Punish/permissions.yml`. Each rank has a permis
 /lp group mod permission set mrpunish.mod
 ```
 
-Anyone with a rank node automatically gets everything the rank grants, plus everything from the ranks it inherits. A player's rank is the heaviest rank node they have. MR-Punish remembers each player's rank from their last visit, for when they're offline. Staff can only act on players whose rank weight is lower than their own; players without a rank have weight 0, and console can do everything. Operators get `mrpunish.owner` by default.
+Anyone with a rank node automatically gets everything the rank grants, plus everything from the ranks it inherits. A player's rank is the heaviest rank node they have. With [LuckPerms](https://luckperms.net) installed (recommended), the rank of an offline player is read from LuckPerms, so promoting someone while they're offline protects them at once; without it, MR-Punish uses the rank they had when they were last online. Either way, the higher of the two is used. MR-Punish remembers each player's rank from their last visit, for when they're offline. Staff can only act on players whose rank weight is lower than their own; players without a rank have weight 0, and console can do everything. Operators get `mrpunish.owner` by default.
 
 ## Commands
 
-MR-Punish registers its commands through Paper's command system. Every command also works with the `mr-punish:` prefix (e.g. `/mr-punish:mrpunish`), which helps if another plugin uses the same name. At startup, the console warns about any MR-Punish label that another plugin or a `commands.yml` alias owns, and `/mrpunish version` lists them.
+MR-Punish registers its commands through Paper's command system. Every command also works with the `mr-punish:` prefix (e.g. `/mr-punish:ban`), which helps if another plugin uses the same name. At startup, the console warns about any MR-Punish label that another plugin or a `commands.yml` alias owns, and `/mrpunish version` lists them.
+
+To give a label back to vanilla or another plugin, turn it off in `config.yml` (`commands.ban.enabled: false`, then restart): `/ban` is then the other command, and MR-Punish's stays available as `/mr-punish:ban`. To make a label that another plugin took point at MR-Punish instead, add an alias to the server's `commands.yml`, for example `ban: ["mr-punish:ban $1-"]`.
 
 | Command | Permission | What it does |
 |---|---|---|
-| `/mrpunish` (aliases `/staffhelper`, `/mrp`) | `mrpunish.staff`, `mrpunish.reload` or `mrpunish.admin` | Help, listing only the commands you can use. |
+| `/mrpunish` (aliases `/staffhelper`, `/mrp`) | `mrpunish.staff`, `mrpunish.reload`, `mrpunish.admin` or `mrpunish.import` | Help, listing only the commands you can use. |
 | `/mrpunish reload` | `mrpunish.reload` | Reloads all five files and reports what failed and why. |
 | `/mrpunish version` | `mrpunish.admin` | Plugin and server version, storage and whether it's connected, and any command labels owned by other plugins. |
+| `/mrpunish import vanilla [--clear]` | `mrpunish.import` | Imports vanilla's player bans; `--clear` removes the imported entries from the vanilla list afterwards. |
+| `/ban <player> [-s] <reason> [note...]` | `mrpunish.ban` | Bans with the reason's next escalation step. Works from console. |
+| `/unban <player> [reason...]` | `mrpunish.remove` | Removes every active ban of the player, recording the reason. |
 
 ## Permissions
 

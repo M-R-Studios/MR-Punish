@@ -64,6 +64,11 @@ class AdminCommandTest {
             }
 
             @Override
+            public void importVanilla(CommandSender sender, boolean clear) {
+                reloadedBy.add("import:" + sender.getName() + ":" + clear);
+            }
+
+            @Override
             public String clashSummary() {
                 return "none";
             }
@@ -147,5 +152,21 @@ class AdminCommandTest {
         command.reload(server.getConsoleSender());
         assertEquals(List.of("CONSOLE"), reloadedBy);
         assertTrue(AdminCommand.mayUse(server.getConsoleSender()));
+    }
+
+    @Test
+    void subcommandsAreDispatchedAndCheckedInTheExecutor() {
+        PlayerMock mod = player(Perms.STAFF);
+        command.dispatch(mod, "reload");
+        command.dispatch(mod, "import  vanilla");
+        assertEquals(2, messages(mod).stream().filter(l -> l.endsWith("You don't have permission to do that.")).count());
+        assertTrue(reloadedBy.isEmpty());
+
+        PlayerMock owner = player(Perms.STAFF, Perms.IMPORT, Perms.RELOAD);
+        command.dispatch(owner, "IMPORT vanilla --clear");
+        command.dispatch(owner, " reload ");
+        assertEquals(List.of("import:" + owner.getName() + ":true", owner.getName()), reloadedBy);
+        command.dispatch(owner, "nonsense");
+        assertTrue(messages(owner).get(0).endsWith("MR-Punish commands:"), "unknown shows the help");
     }
 }

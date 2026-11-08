@@ -131,6 +131,11 @@ public final class ReasonRegistry {
         return enabledByType.get(type);
     }
 
+    /** Every word (key or alias) that picks an enabled reason of {@code type}. */
+    public Map<String, Reason> words(PunishmentType type) {
+        return words.get(type);
+    }
+
     /** The reason {@code type} falls back to when a command's reason matches nothing. Always enabled. */
     public Reason fallback(PunishmentType type) {
         return fallbacks.get(type);

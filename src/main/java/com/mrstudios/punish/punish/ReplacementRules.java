@@ -54,7 +54,7 @@ public final class ReplacementRules {
     }
 
     /** Whether end {@code a} is strictly later than {@code b} (null = permanent = latest). */
-    static boolean later(Long a, Long b) {
+    public static boolean later(Long a, Long b) {
         if (a == null) {
             return b != null;
         }

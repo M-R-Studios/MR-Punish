@@ -14,6 +14,57 @@ general:
   warning-offence: "offence <offence>"
   # Who is named as the staff member when console acts.
   console-name: "Console"
+  player-only: "<prefix><red>Only players can use this command."
+  invalid-player: "<prefix><red>'<input>' isn't a valid player name."
+  unknown-player: "<prefix><red><player> has never joined this server."
+  storage-unavailable: "<prefix><red>The database is unavailable, so nothing was changed. Try again shortly."
+  server-stopping: "<prefix><red>The server is stopping."
+  usage: "<prefix><gray>Usage: <white><usage>"
+
+punish:
+  # Sent to the staff member
+  banned: "<prefix><green>Banned <white><player></white> for <reason> <gray>(<duration>, #<id>, offence <offence>)."
+  replaced: "<prefix><gray>This replaces #<old-id>."
+  failed: "<prefix><red>The punishment could not be saved, so it was NOT applied (error <error-id>)."
+  would-shorten: "<prefix><red><player> already has an active <type> (#<id>) that ends <end> (<remaining> left). A new one can't end sooner. Remove it first to shorten it."
+  would-shorten-permanent: "<prefix><red><player> already has a permanent <type> (#<id>). A new one can't end sooner. Remove it first to shorten it."
+  self: "<prefix><red>You can't punish yourself."
+  rank: "<prefix><red>You can't punish <player>: their rank is equal to or higher than yours."
+  exempt: "<prefix><red><player> is exempt. Only console can punish them."
+  reason-no-permission: "<prefix><red>You can't use the reason <reason>."
+  busy: "<prefix><gray>Still saving the previous action…"
+
+unpunish:
+  removed: "<prefix><green>Removed <count> <type>(s) from <white><player></white> <gray>(<ids>)."
+  none: "<prefix><red><player> has no active <type>."
+  issuer-rank: "<prefix><red>#<id> was issued by a higher rank than yours, so you can't remove it."
+  self: "<prefix><red>You can't remove your own punishment."
+  failed: "<prefix><red>The removal could not be saved, so nothing was removed (error <error-id>)."
+
+# Sent to the punished player
+target:
+  # Lines of the screen a banned player sees when kicked or trying to join.
+  ban-screen:
+    - "<red><bold>You are banned from this server"
+    - ""
+    - "<gray>Reason: <white><reason>"
+    - "<gray>Banned by: <white><staff>"
+    - "<gray>Expires: <white><expires> <gray>(<remaining> left)"
+    - "<gray>Ban ID: <white>#<id>"
+    - ""
+    - "<gray>Appeal at <white><appeal-link>"
+  ban-screen-permanent:
+    - "<red><bold>You are permanently banned from this server"
+    - ""
+    - "<gray>Reason: <white><reason>"
+    - "<gray>Banned by: <white><staff>"
+    - "<gray>Ban ID: <white>#<id>"
+    - ""
+    - "<gray>Appeal at <white><appeal-link>"
+  # Shown at login when punishments can't be checked (login.fail-policy).
+  login-unverified:
+    - "<red>We couldn't check your account right now."
+    - "<gray>Please try again in a minute."
 
 notify:
   # Staff notifications (mrpunish.notify, except the staff member who acted) and console.
@@ -28,7 +79,9 @@ notify:
   verbs: { WARN: warned, MUTE: muted, BAN: banned, IP_MUTE: IP-muted, IP_BAN: IP-banned }
   # Sent to online players with mrpunish.admin, and to admins who join while the database is down.
   storage-down: "<dark_gray>[<red>MR<dark_gray>] <red>The MR-Punish database is unavailable. Punishments can't be saved until it's back."
-  storage-back: "<dark_gray>[<red>MR<dark_gray>] <green>The MR-Punish database is back."
+  storage-back: "<dark_gray>[<red>MR<dark_gray>] <green>The MR-Punish database is back. <count> player(s) were re-checked."
+  # Sent to mrpunish.admin (at most once a minute) when logins couldn't be checked.
+  login-check-failed: "<dark_gray>[<red>MR<dark_gray>] <red>Couldn't check punishments for logins (database <reason>). Policy: <policy>."
 
 # Public announcements (announcements.* in config.yml). Never include staff notes or IPs.
 announce:
@@ -52,6 +105,7 @@ admin:
   help:
     reload: "<prefix><white>/mrpunish reload</white> <gray>- reload all configuration files"
     version: "<prefix><white>/mrpunish version</white> <gray>- version, storage and command clashes"
+    import: "<prefix><white>/mrpunish import vanilla [--clear]</white> <gray>- import the vanilla ban list"
   # Shown instead when the sender can't use any of the commands above.
   help-none: "<prefix><gray>There are no MR-Punish commands you can use."
   # <version>: MR-Punish version. <server>: server software and Minecraft version.
@@ -63,3 +117,8 @@ admin:
   reload-failed: "<prefix><red>Reload failed for <file>; kept the previous settings for it:"
   reload-detail: "<gray> - <detail>"
   reload-restart-needed: "<prefix><yellow>These changes need a restart to apply: <what>"
+  import-start: "<prefix><gray>Importing vanilla bans…"
+  import-done: "<prefix><green>Imported <players> player ban(s). Skipped <skipped> already imported, <unknown> unreadable."
+  import-cleared: "<prefix><green>Removed <count> imported entries from the vanilla ban list."
+  import-ip-skipped: "<prefix><yellow><count> vanilla IP ban(s) were skipped: MR-Punish's IP features aren't available yet."
+  import-failed: "<prefix><red>Import failed (error <error-id>). Nothing was imported or cleared."

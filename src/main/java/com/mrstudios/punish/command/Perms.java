@@ -6,6 +6,7 @@ public final class Perms {
     public static final String STAFF = "mrpunish.staff";
     public static final String RELOAD = "mrpunish.reload";
     public static final String ADMIN = "mrpunish.admin";
+    public static final String IMPORT = "mrpunish.import";
 
     private Perms() {
     }

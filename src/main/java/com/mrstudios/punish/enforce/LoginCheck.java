@@ -1,0 +1,67 @@
+package com.mrstudios.punish.enforce;
+
+import com.mrstudios.punish.config.Settings.FailPolicy;
+import com.mrstudios.punish.punish.Punishment;
+import java.util.Optional;
+import java.util.UUID;
+
+/**
+ * What happens to a joining player (DESIGN.md 7.7), as a pure decision: the database's answer if
+ * it gave one, else {@code login.fail-policy}. Never silently lets a banned player in because of a
+ * failure, and never locks everyone out without saying why.
+ */
+public final class LoginCheck {
+
+    public enum Outcome {
+        /** Checked: not banned. */
+        ALLOW,
+        /** Not checked, let in: checked again once the database answers. */
+        ALLOW_UNVERIFIED,
+        /** Banned (by the database, or by the cache under CACHE). */
+        DENY_BANNED,
+        /** Not checked, refused with the "try again" screen. */
+        DENY_UNVERIFIED
+    }
+
+    /** @param ban set for {@link Outcome#DENY_BANNED} */
+    public record Decision(Outcome outcome, Punishment ban) {
+    }
+
+    /**
+     * What the database answered.
+     *
+     * @param ok  false if the lookup failed or timed out
+     * @param ban the active ban it found (only when {@code ok})
+     */
+    public record Lookup(boolean ok, Optional<Punishment> ban) {
+
+        public static Lookup failed() {
+            return new Lookup(false, Optional.empty());
+        }
+
+        public static Lookup of(Optional<Punishment> ban) {
+            return new Lookup(true, ban);
+        }
+    }
+
+    private LoginCheck() {
+    }
+
+    public static Decision decide(UUID uuid, Lookup lookup, FailPolicy policy, BanCache cache, long now) {
+        if (lookup.ok()) {
+            return lookup.ban().map(b -> new Decision(Outcome.DENY_BANNED, b))
+                    .orElse(new Decision(Outcome.ALLOW, null));
+        }
+        return switch (policy) {
+            case CACHE -> {
+                if (!cache.loaded()) {
+                    yield new Decision(Outcome.DENY_UNVERIFIED, null);
+                }
+                yield cache.get(uuid, now).map(b -> new Decision(Outcome.DENY_BANNED, b))
+                        .orElse(new Decision(Outcome.ALLOW_UNVERIFIED, null));
+            }
+            case DENY -> new Decision(Outcome.DENY_UNVERIFIED, null);
+            case ALLOW -> new Decision(Outcome.ALLOW_UNVERIFIED, null);
+        };
+    }
+}

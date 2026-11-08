@@ -22,6 +22,17 @@ import com.mrstudios.punish.punish.PunishmentService;
 import com.mrstudios.punish.rank.OfflineRanks;
 import com.mrstudios.punish.rank.RankCache;
 import com.mrstudios.punish.rank.RankRegistrar;
+import com.mrstudios.punish.command.BanCommand;
+import com.mrstudios.punish.command.UnbanCommand;
+import com.mrstudios.punish.enforce.BanCache;
+import com.mrstudios.punish.enforce.BanEnforcement;
+import com.mrstudios.punish.imports.VanillaImporter;
+import com.mrstudios.punish.storage.StorageException;
+import com.mrstudios.punish.imports.VanillaBanLists;
+import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
+import org.bukkit.BanEntry;
+import org.bukkit.ban.ProfileBanList;
+import org.bukkit.profile.PlayerProfile;
 import org.bukkit.Registry;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -71,6 +82,7 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
     private PlayerTracker tracker;
     private RankCache rankCache;
     private PunishmentService punishments;
+    private BanEnforcement bans;
     /** Whether the LuckPerms hook was set up at startup (changing that needs a restart). */
     private boolean luckPermsHooked;
     private static final long RANK_REFRESH_TICKS = 60 * 20L;
@@ -89,7 +101,7 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
     @Override
     public void onEnable() {
         // Commands that config.yml can switch off. Later steps add theirs.
-        List<CommandRegistry.Switchable> switchable = List.of();
+        List<CommandRegistry.Switchable> switchable = List.of(new BanCommand(this), new UnbanCommand(this));
         Set<String> reserved = new HashSet<>(AdminCommand.ALIASES);
         reserved.add(AdminCommand.LABEL);
 
@@ -153,6 +165,14 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
         punishments = new PunishmentService(storage, () -> state, offline,
                 task -> getServer().getScheduler().runTask(this, task),
                 new Notifier(getServer()::getOnlinePlayers, getLogger()), System::currentTimeMillis, getLogger());
+        bans = new BanEnforcement(this, storage, () -> state, new BanCache(), System::currentTimeMillis, getLogger());
+        getServer().getPluginManager().registerEvents(bans, this);
+        punishments.addListener(bans);
+        bans.loadCache();
+        // Players let in unverified are checked again as soon as the database answers (DESIGN.md 7.7 step 5).
+        getServer().getScheduler().runTaskTimer(this, () -> bans.recheckUnverified(), HEALTH_CHECK_TICKS,
+                HEALTH_CHECK_TICKS);
+        hintAboutVanillaBans();
         getServer().getScheduler().runTaskTimerAsynchronously(this, storage::check, HEALTH_CHECK_TICKS,
                 HEALTH_CHECK_TICKS);
         // Retention a minute after startup, then once a day (DESIGN.md 9.5).
@@ -193,8 +213,12 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
                 loadNames();
             }
             if (announce) {
-                getLogger().info("Storage is back: " + storage.describeSettings());
-                notifyAdmins("notify.storage-back");
+                bans.loadCache();
+                int rechecked = bans.recheckUnverified();
+                getLogger().info("Storage is back: " + storage.describeSettings() + ". Re-checked " + rechecked
+                        + " player(s) who were let in unverified.");
+                notifyAdmins("notify.storage-back",
+                        Placeholder.unparsed("count", String.valueOf(rechecked)));
                 // Joins while it was down weren't recorded.
                 for (Player player : getServer().getOnlinePlayers()) {
                     tracker.record(player);
@@ -207,12 +231,82 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
         }
     }
 
-    private void notifyAdmins(String key) {
+    private void notifyAdmins(String key, TagResolver... placeholders) {
         for (Player player : getServer().getOnlinePlayers()) {
             if (player.hasPermission(ADMIN)) {
-                state.messages().send(player, key);
+                state.messages().send(player, key, placeholders);
             }
         }
+    }
+
+    /** DESIGN.md 7.9: vanilla bans keep working on their own; say so once if there are any. */
+    private void hintAboutVanillaBans() {
+        int players = VanillaBanLists.profiles(getServer()).getEntries().size();
+        int ips = VanillaBanLists.ipCount(getServer());
+        if (players + ips > 0) {
+            getLogger().info((players + ips) + " vanilla ban(s) exist (" + players + " player, " + ips + " IP);"
+                    + " MR-Punish doesn't manage them. Run /mrpunish import vanilla to import them.");
+        }
+    }
+
+    /** {@code /mrpunish import vanilla [--clear]} (DESIGN.md 7.9). */
+    @Override
+    public void importVanilla(CommandSender sender, boolean clear) {
+        Messages messages = state.messages();
+        if (!storage.health().isUp()) {
+            messages.send(sender, "general.storage-unavailable");
+            return;
+        }
+        // Read on the main thread, copied to plain records for the database thread.
+        ProfileBanList list = VanillaBanLists.profiles(getServer());
+        List<VanillaImporter.Entry> entries = new ArrayList<>();
+        for (BanEntry<?> entry : list.getEntries()) {
+            PlayerProfile profile = entry.getBanTarget() instanceof PlayerProfile p ? p : null;
+            entries.add(new VanillaImporter.Entry(profile == null ? null : profile.getUniqueId(),
+                    profile == null ? null : profile.getName(), entry.getReason(), entry.getSource(),
+                    entry.getCreated() == null ? System.currentTimeMillis() : entry.getCreated().getTime(),
+                    entry.getExpiration() == null ? null : entry.getExpiration().getTime()));
+        }
+        int ipEntries = VanillaBanLists.ipCount(getServer());
+        messages.send(sender, "admin.import-start");
+        UUID actorUuid = sender instanceof Player p ? p.getUniqueId() : null;
+        String actorName = sender instanceof Player ? sender.getName() : messages.raw("general.console-name");
+        String server = state.settings().effectiveServerName();
+        storage.executor().transaction("importing vanilla bans", c -> new VanillaImporter(storage.database())
+                        .run(c, entries, actorName, actorUuid, server, System.currentTimeMillis()))
+                .whenComplete((result, error) -> getServer().getScheduler().runTask(this, () -> {
+                    Messages m = state.messages();
+                    if (error != null) {
+                        Throwable cause = error instanceof java.util.concurrent.CompletionException && error.getCause()
+                                != null ? error.getCause() : error;
+                        String id = cause instanceof StorageException se && se.errorId() != null ? se.errorId() : "-";
+                        m.send(sender, "admin.import-failed", Placeholder.unparsed("error-id", id));
+                        return;
+                    }
+                    m.send(sender, "admin.import-done",
+                            Placeholder.unparsed("players", String.valueOf(result.players())),
+                            Placeholder.unparsed("skipped", String.valueOf(result.skipped())),
+                            Placeholder.unparsed("unknown", String.valueOf(result.unknown())));
+                    if (ipEntries > 0) {
+                        m.send(sender, "admin.import-ip-skipped", Placeholder.unparsed("count", String.valueOf(ipEntries)));
+                    }
+                    getLogger().info(sender.getName() + " imported vanilla bans: " + result.players() + " imported, "
+                            + result.skipped() + " already imported, " + result.unknown() + " unreadable.");
+                    bans.loadCache();
+                    if (clear) {
+                        // Only after the commit: entries now in MR-Punish leave the vanilla list.
+                        int cleared = 0;
+                        ProfileBanList now = VanillaBanLists.profiles(getServer());
+                        for (BanEntry<?> entry : now.getEntries()) {
+                            PlayerProfile profile = entry.getBanTarget() instanceof PlayerProfile p ? p : null;
+                            if (profile != null && result.imported().contains(profile.getUniqueId())) {
+                                now.pardon(profile);
+                                cleared++;
+                            }
+                        }
+                        m.send(sender, "admin.import-cleared", Placeholder.unparsed("count", String.valueOf(cleared)));
+                    }
+                }));
     }
 
     /** Every admin who joins while storage is unavailable is told (DESIGN.md 2.4). */
@@ -253,6 +347,7 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
         if (storage == null) {
             return;
         }
+        // From here, commands and logins get "the server is stopping" from the closed executor.
         // On /stop, plugins are disabled while players are still online (DESIGN.md 2.4), so their
         // quit would come too late: record it now, then let every submitted write finish.
         if (tracker != null) {
@@ -314,6 +409,10 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
     /** Issues and removes punishments. Commands and menus arrive in later steps. */
     public PunishmentService punishments() {
         return punishments;
+    }
+
+    public BanEnforcement bans() {
+        return bans;
     }
 
     public RankCache rankCache() {

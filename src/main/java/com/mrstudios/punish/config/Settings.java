@@ -18,10 +18,17 @@ import org.bukkit.NamespacedKey;
  * @param announcements which types are announced to every player
  * @param luckperms     use the LuckPerms hook for offline ranks (read at startup)
  * @param notifySound   played to staff with each notification
+ * @param display       date format, time zone and appeal link for messages and the ban screen
+ * @param login         what to do when a login can't be checked
+ * @param banKickOnline kick a banned player who is online
+ * @param maxTextLength longest note or removal reason kept
+ * @param punishedSound played to the staff member when a punishment is applied
+ * @param failedSound   played to the staff member when an action is refused or fails
  */
 public record Settings(TimeSpan historyPeriod, ReasonRegistry reasons, Map<String, CommandToggle> commands,
         Storage storage, String serverName, TimeSpan warningActiveFor, Map<PunishmentType, Boolean> announcements,
-        boolean luckperms, SoundSetting notifySound) {
+        boolean luckperms, SoundSetting notifySound, Display display, Login login, boolean banKickOnline,
+        int maxTextLength, SoundSetting punishedSound, SoundSetting failedSound) {
 
     public Settings {
         commands = Map.copyOf(commands);
@@ -35,6 +42,23 @@ public record Settings(TimeSpan historyPeriod, ReasonRegistry reasons, Map<Strin
 
     public boolean announces(PunishmentType type) {
         return announcements.getOrDefault(type, false);
+    }
+
+    /** @param zone the time zone dates are shown in */
+    public record Display(java.time.format.DateTimeFormatter dateFormat, java.time.ZoneId zone, String appealLink) {
+
+        public String date(long millis) {
+            return dateFormat.format(java.time.Instant.ofEpochMilli(millis).atZone(zone));
+        }
+    }
+
+    public enum FailPolicy {
+        CACHE,
+        DENY,
+        ALLOW
+    }
+
+    public record Login(FailPolicy failPolicy, int timeoutMs) {
     }
 
     /** A sound from {@code sounds.*}. */

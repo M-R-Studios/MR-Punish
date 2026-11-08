@@ -45,6 +45,21 @@ public final class PunishmentService {
     private final LongSupplier clock;
     private final Logger log;
     private final InFlight inFlight = new InFlight();
+    private final List<Listener> listeners = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+    /** Applies a committed change: caches, kicks, messages to the target (main thread, after the commit). */
+    public interface Listener {
+
+        default void issued(PluginState snapshot, Requests.Issue request, IssueResult.Committed committed) {
+        }
+
+        default void removed(PluginState snapshot, Requests.Remove request, RemoveResult.Removed removed) {
+        }
+    }
+
+    public void addListener(Listener listener) {
+        listeners.add(listener);
+    }
 
     public PunishmentService(Storage storage, Supplier<PluginState> state, OfflineRanks offlineRanks, Executor mainThread,
             Notifier notifier, LongSupplier clock, Logger log) {
@@ -157,6 +172,14 @@ public final class PunishmentService {
                 .thenApplyAsync(r -> {
                     if (r instanceof IssueResult.Committed committed) {
                         // The punishment is saved whatever happens here: a notification bug mustn't hide that.
+                        for (Listener listener : listeners) {
+                            try {
+                                listener.issued(snapshot, request, committed);
+                            } catch (RuntimeException e) {
+                                log.log(Level.SEVERE, "Couldn't apply punishment #" + committed.punishment().id()
+                                        + " (it is saved and applies at the next login)", e);
+                            }
+                        }
                         try {
                             notifier.issued(snapshot, request, committed);
                         } catch (RuntimeException e) {
@@ -198,6 +221,13 @@ public final class PunishmentService {
                 })
                 .thenApplyAsync(r -> {
                     if (r instanceof RemoveResult.Removed removed) {
+                        for (Listener listener : listeners) {
+                            try {
+                                listener.removed(snapshot, request, removed);
+                            } catch (RuntimeException e) {
+                                log.log(Level.SEVERE, "Couldn't apply a removal (it is saved)", e);
+                            }
+                        }
                         try {
                             notifier.removed(snapshot, request, removed);
                         } catch (RuntimeException e) {

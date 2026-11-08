@@ -41,7 +41,8 @@ public final class SettingsLoader {
     private static final Pattern TABLE_PREFIX = Pattern.compile("[a-z0-9_]{0,16}");
 
     private static final Set<String> TOP_LEVEL = Set.of("config-version", "escalation", "fallback-reasons", "reasons",
-            "commands", "storage", "server-name", "warnings", "announcements", "hooks", "sounds");
+            "commands", "storage", "server-name", "warnings", "announcements", "hooks", "sounds", "date-format",
+            "time-zone", "appeal-link", "ban", "login", "input");
     private static final Set<String> REASON_FIELDS = Set.of("type", "display", "description", "icon", "slot", "aliases",
             "escalation", "history-period", "permission", "enabled");
     private static final Set<String> TOGGLE_FIELDS = Set.of("enabled", "aliases");
@@ -170,11 +171,52 @@ public final class SettingsLoader {
         warnUnknownIn(yaml, "hooks", Set.of("luckperms"), warnings);
         Settings.SoundSetting notify = sound(r, "sounds.notify",
                 new Settings.SoundSetting(true, NamespacedKey.minecraft("block.note_block.pling"), 0.6f, 1.4f));
-        warnUnknownIn(yaml, "sounds", Set.of("notify"), warnings);
-        warnUnknownIn(yaml, "sounds.notify", Set.of("enabled", "sound", "volume", "pitch"), warnings);
+        Settings.SoundSetting punished = sound(r, "sounds.punished",
+                new Settings.SoundSetting(true, NamespacedKey.minecraft("block.anvil.land"), 0.6f, 1.0f));
+        Settings.SoundSetting failed = sound(r, "sounds.failed",
+                new Settings.SoundSetting(true, NamespacedKey.minecraft("entity.villager.no"), 1.0f, 1.0f));
+        warnUnknownIn(yaml, "sounds", Set.of("notify", "punished", "failed"), warnings);
+        for (String name : List.of("notify", "punished", "failed")) {
+            warnUnknownIn(yaml, "sounds." + name, Set.of("enabled", "sound", "volume", "pitch"), warnings);
+        }
+
+        String defaultPattern = "yyyy-MM-dd HH:mm";
+        String pattern = r.text("date-format", defaultPattern, s -> {
+            try {
+                java.time.format.DateTimeFormatter.ofPattern(s);
+                return !s.isEmpty();
+            } catch (IllegalArgumentException e) {
+                return false;
+            }
+        }, "a date pattern such as yyyy-MM-dd HH:mm");
+        String zoneText = r.text("time-zone", "system", s -> {
+            if (s.equalsIgnoreCase("system")) {
+                return true;
+            }
+            try {
+                java.time.ZoneId.of(s);
+                return true;
+            } catch (java.time.DateTimeException e) {
+                return false;
+            }
+        }, "system or a time zone ID such as Europe/Warsaw");
+        java.time.ZoneId zone = zoneText.equalsIgnoreCase("system") ? java.time.ZoneId.systemDefault()
+                : java.time.ZoneId.of(zoneText);
+        String appealLink = r.text("appeal-link", "https://discord.gg/your-server", s -> true, "text");
+        Settings.Display display = new Settings.Display(java.time.format.DateTimeFormatter.ofPattern(pattern), zone,
+                appealLink);
+
+        boolean kickOnline = r.bool("ban.kick-online", true);
+        warnUnknownIn(yaml, "ban", Set.of("kick-online"), warnings);
+        Settings.Login login = new Settings.Login(
+                r.choice("login.fail-policy", Settings.FailPolicy.class, Settings.FailPolicy.CACHE),
+                r.wholeNumber("login.timeout-ms", 500, 10_000, 3000));
+        warnUnknownIn(yaml, "login", Set.of("fail-policy", "timeout-ms"), warnings);
+        int maxText = r.wholeNumber("input.max-text-length", 16, 500, 200);
+        warnUnknownIn(yaml, "input", Set.of("max-text-length"), warnings);
 
         return LoadResult.loaded(new Settings(historyPeriod, registry, commands, storage, serverName, activeFor,
-                announcements, luckperms, notify), warnings);
+                announcements, luckperms, notify, display, login, kickOnline, maxText, punished, failed), warnings);
     }
 
     private Settings.SoundSetting sound(YamlReader r, String section, Settings.SoundSetting def) {

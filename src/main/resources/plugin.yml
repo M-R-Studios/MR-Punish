@@ -9,7 +9,9 @@ folia-supported: false
 softdepend: [LuckPerms]
 # Commands are registered with Paper's Brigadier API, so they aren't listed under "commands:".
 # Every command is also reachable as /mr-punish:<name>. The README lists them in full.
-#   mrpunish (aliases staffhelper, mrp): help, reload, version
+#   mrpunish (aliases staffhelper, mrp): help, reload, version, import vanilla [--clear]
+#   ban <player> [-s] <reason> [note...]
+#   unban <player> [reason...]
 permissions:
   # Rank nodes. What each rank grants is set in plugins/MR-Punish/permissions.yml.
   mrpunish.helper:

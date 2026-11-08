@@ -13,3 +13,9 @@
 - Degraded mode: if the database is unreachable at startup or lost while running, MR-Punish keeps running, alerts admins and retries every 30 seconds.
 - Every player who joins is remembered with their name and their rank at their last visit.
 - `/mrpunish version` shows the storage in use and whether it's connected.
+- `/ban` and `/unban`: bans with automatic escalation per reason, notes, silent bans (`-s`), tab completion, and console support. A ban can't be shortened by issuing a shorter one; replaced and removed bans stay in history.
+- Bans are checked at every login, with a ban screen showing the reason, who banned, the expiry and the ban ID. Online players are kicked when banned.
+- `login.fail-policy` (CACHE, DENY or ALLOW) for logins the database can't answer in time; players let in unchecked are checked again once it's back, and admins are alerted.
+- Public ban announcements (`announcements.*`), and staff notifications with a sound.
+- `/mrpunish import vanilla [--clear]` copies vanilla's ban list into MR-Punish once; the console mentions vanilla bans at startup.
+- Offline players' ranks are read from LuckPerms when it's installed.

@@ -30,7 +30,8 @@ class ConfigFilesTest {
     @BeforeEach
     void setUp() {
         files = new ConfigFiles(dir.toFile(), this::copyFromJar,
-                new SettingsLoader(name -> true, List.of(), Set.of("mrpunish"), SettingsLoader.bundledDefaults()),
+                new SettingsLoader(name -> true, SettingsLoaderTest.SHIPPED_COMMANDS, Set.of("mrpunish"),
+                        SettingsLoader.bundledDefaults()),
                 new MessagesLoader(MessagesLoader.bundledDefaults()),
                 new GuiLoader(),
                 new RankLoader(name -> true, RankLoader.bundledDefaults()),

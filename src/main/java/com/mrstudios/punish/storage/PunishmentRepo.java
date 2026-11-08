@@ -134,6 +134,36 @@ public final class PunishmentRepo {
         }
     }
 
+    /** Every punishment of {@code type} active at {@code now}, for every target (e.g. the ban cache). */
+    public List<Punishment> allActive(Connection c, PunishmentType type, long now) throws SQLException {
+        String sql = "SELECT " + COLUMNS + " FROM " + table()
+                + " WHERE type = ? AND status = 'ACTIVE' AND (expires_at IS NULL OR expires_at > ?) ORDER BY id";
+        try (PreparedStatement s = c.prepareStatement(sql)) {
+            s.setString(1, type.name());
+            s.setLong(2, now);
+            return list(s);
+        }
+    }
+
+    /** Whether a punishment with this import key exists (vanilla import, DESIGN.md 7.9). */
+    public boolean importKeyExists(Connection c, String key) throws SQLException {
+        try (PreparedStatement s = c.prepareStatement("SELECT 1 FROM " + table() + " WHERE import_key = ?")) {
+            s.setString(1, key);
+            try (ResultSet r = s.executeQuery()) {
+                return r.next();
+            }
+        }
+    }
+
+    /** Sets the import key of a punishment just inserted by an import. */
+    public void setImportKey(Connection c, long id, String key) throws SQLException {
+        try (PreparedStatement s = c.prepareStatement("UPDATE " + table() + " SET import_key = ? WHERE id = ?")) {
+            s.setString(1, key);
+            s.setLong(2, id);
+            s.executeUpdate();
+        }
+    }
+
     public Optional<Punishment> byId(Connection c, long id) throws SQLException {
         try (PreparedStatement s = c.prepareStatement("SELECT " + COLUMNS + " FROM " + table() + " WHERE id = ?")) {
             s.setLong(1, id);
