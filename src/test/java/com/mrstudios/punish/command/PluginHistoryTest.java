@@ -141,6 +141,17 @@ class PluginHistoryTest {
         ticks(2);
     }
 
+    /**
+     * Clicks a button that opens another history page and waits until that new menu is showing (a
+     * different holder). The plugin only opens a history menu once its page has loaded.
+     */
+    private void clickForNewPage(PlayerMock player, int slot) throws InterruptedException {
+        MenuHolder before = menu(player);
+        click(player, slot, ClickType.LEFT);
+        until(() -> menu(player) != before && "HistoryMenu".equals(menuName(player)));
+        assertTrue(menu(player) != before && "HistoryMenu".equals(menuName(player)), "a new page opened");
+    }
+
     /** Inserts a punishment directly (fast setup for many entries). */
     private long insert(PunishmentType type, UUID target, Long expiresAt, StoredStatus status, int issuerWeight)
             throws Exception {
@@ -160,8 +171,7 @@ class PluginHistoryTest {
 
     private void openHistory(PlayerMock viewer, String target, int page) throws InterruptedException {
         new HistoryCommand(plugin).run(viewer, target, page);
-        until(() -> "HistoryMenu".equals(menuName(viewer)) && type(viewer, BACK) != Material.AIR
-                && !name(slot(viewer, 22)).contains("Loading"));
+        until(() -> "HistoryMenu".equals(menuName(viewer)));
         assertEquals("HistoryMenu", menuName(viewer));
     }
 
@@ -190,34 +200,60 @@ class PluginHistoryTest {
         assertEquals(Material.ARROW, type(admin, NEXT));
         assertEquals(Material.GRAY_STAINED_GLASS_PANE, type(admin, PREVIOUS), "no previous on page 1");
 
-        click(admin, NEXT, ClickType.LEFT);
-        until(() -> plain(admin.getOpenInventory().title()).endsWith("(2/2)"));
+        clickForNewPage(admin, NEXT);
+        assertEquals("History – Steve (2/2)", plain(admin.getOpenInventory().title()));
         assertEquals(Material.RED_CONCRETE, type(admin, 7), "8 entries on page 2 (53 - 45)");
         assertEquals(Material.GRAY_STAINED_GLASS_PANE, type(admin, 8));
         assertEquals(Material.ARROW, type(admin, PREVIOUS));
 
         // Type: All -> Warning (page back to 1).
-        click(admin, TYPE_FILTER, ClickType.LEFT);
-        until(() -> name(slot(admin, TYPE_FILTER)).equals("Type: Warning")
-                && plain(admin.getOpenInventory().title()).endsWith("(1/2)"));
+        clickForNewPage(admin, TYPE_FILTER);
+        assertEquals("Type: Warning", name(slot(admin, TYPE_FILTER)));
+        assertEquals("History – Steve (1/2)", plain(admin.getOpenInventory().title()));
         assertTrue(name(slot(admin, 0)).contains("Warning"), name(slot(admin, 0)));
         // -> Mute: the active and the expired one.
-        click(admin, TYPE_FILTER, ClickType.LEFT);
-        until(() -> name(slot(admin, TYPE_FILTER)).equals("Type: Mute"));
-        until(() -> name(slot(admin, 0)).equals("#" + active + " Mute – Spam"));
+        clickForNewPage(admin, TYPE_FILTER);
+        assertEquals("Type: Mute", name(slot(admin, TYPE_FILTER)));
+        assertEquals("#" + active + " Mute – Spam", name(slot(admin, 0)));
         assertEquals("#" + expired + " Mute – Spam", name(slot(admin, 1)));
         assertEquals(Material.GRAY_STAINED_GLASS_PANE, type(admin, 2));
-        // Status: All -> Active -> Expired.
-        click(admin, STATUS_FILTER, ClickType.LEFT);
-        until(() -> name(slot(admin, STATUS_FILTER)).equals("Status: Active") && type(admin, 1) != Material.GRAY_CONCRETE);
+        // Status: All -> Active -> Expired -> Removed.
+        clickForNewPage(admin, STATUS_FILTER);
+        assertEquals("Status: Active", name(slot(admin, STATUS_FILTER)));
         assertEquals("#" + active + " Mute – Spam", name(slot(admin, 0)));
-        click(admin, STATUS_FILTER, ClickType.LEFT);
-        until(() -> name(slot(admin, STATUS_FILTER)).equals("Status: Expired"));
-        until(() -> name(slot(admin, 0)).equals("#" + expired + " Mute – Spam"));
-        click(admin, STATUS_FILTER, ClickType.LEFT);
-        until(() -> name(slot(admin, STATUS_FILTER)).equals("Status: Removed"));
-        until(() -> type(admin, 22) == Material.BARRIER);
+        assertEquals(Material.GRAY_STAINED_GLASS_PANE, type(admin, 1));
+        clickForNewPage(admin, STATUS_FILTER);
+        assertEquals("Status: Expired", name(slot(admin, STATUS_FILTER)));
+        assertEquals("#" + expired + " Mute – Spam", name(slot(admin, 0)));
+        clickForNewPage(admin, STATUS_FILTER);
+        assertEquals("Status: Removed", name(slot(admin, STATUS_FILTER)));
+        assertEquals(Material.BARRIER, type(admin, 22));
         assertEquals("No punishments", name(slot(admin, 22)));
+    }
+
+    @Test
+    void twoFilterClicksBeforeThePageArrivesShowOnlyTheNewestRequest() throws Exception {
+        insert(PunishmentType.WARN, steve.getUniqueId(), null, StoredStatus.ACTIVE, 0);
+        long active = insert(PunishmentType.MUTE, steve.getUniqueId(), System.currentTimeMillis() + 600_000,
+                StoredStatus.ACTIVE, 0);
+        insert(PunishmentType.MUTE, steve.getUniqueId(), null, StoredStatus.REMOVED, 0);
+        openHistory(admin, "Steve", 1);
+        MenuHolder before = menu(admin);
+        // Both clicks land on the same (old) menu before either page has loaded.
+        for (int slot : new int[] {TYPE_FILTER, STATUS_FILTER}) {
+            server.getPluginManager().callEvent(new InventoryClickEvent(admin.getOpenInventory(),
+                    InventoryType.SlotType.CONTAINER, slot, ClickType.LEFT, InventoryAction.PICKUP_ALL));
+        }
+        until(() -> menu(admin) != before && "HistoryMenu".equals(menuName(admin)));
+        ticks(20);
+        MenuHolder shown = menu(admin);
+        // The second click asked for "Type: All, Status: Active"; nothing from the first is shown.
+        assertEquals("Type: All", name(slot(admin, TYPE_FILTER)));
+        assertEquals("Status: Active", name(slot(admin, STATUS_FILTER)));
+        assertEquals("#" + active + " Mute – Spam", name(slot(admin, 0)));
+        assertTrue(name(slot(admin, 1)).contains("Warning"), name(slot(admin, 1)));
+        assertEquals(Material.GRAY_STAINED_GLASS_PANE, type(admin, 2), "the removed mute is filtered out");
+        assertTrue(menu(admin) == shown, "no later page replaced it");
     }
 
     @Test

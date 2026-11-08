@@ -198,3 +198,84 @@ history-detail:
   # Instead of Remove when it can't be removed (not active).
   not-removable: { slot: 11, material: GRAY_DYE, name: "<gray>Can't be removed", lore: ["<gray>Only active punishments can be removed."] }
   back-slot: 15
+
+# /report <player> without a reason: the configured reasons (config.yml reports.reasons) and "Other".
+report-reason-menu:
+  title: "Report <player>"
+  rows: 3
+  slots: [10, 11, 12, 13, 14, 15, 16]
+  # Each reason uses its icon from config.yml; <reason> is its display.
+  reason-name: "<white><reason>"
+  reason-lore: ["<yellow>Click to report <player> for this"]
+  other: { slot: 22, material: WRITABLE_BOOK, name: "<white>Other", lore: ["<gray>Type a reason in chat (or a form on Bedrock)."] }
+  close-slot: 26
+
+# /reports: 45 a page. Open and claimed reports oldest first, closed ones newest first.
+reports-menu:
+  title: "Reports – <filter> (<page>/<pages>)"
+  rows: 6
+  # Each report is the reported player's head.
+  entry-name: "<white>#<id> <target>"
+  entry-lore:
+    - "<gray>Reported by: <white><reporter>"
+    - "<gray>Reason: <white><reason>"
+    - "<gray>Submitted: <white><date></white> <dark_gray>(<ago> ago)"
+    - "<gray>Server: <white><server>"
+    - "<gray>Status: <status>"
+    - "<claimed-line>"
+    - "<gray>Notes: <white><notes>"
+    - ""
+    - "<yellow>Click for details"
+  claimed-line: "<gray>Claimed by: <white><staff>"
+  # Names of the filters (<filter>).
+  filters: { OPEN: Open, CLAIMED: Claimed, MINE: Claimed by me, CLOSED: Closed, ALL: All }
+  empty: { slot: 22, material: BARRIER, name: "<gray>No reports" }
+  filter: { slot: 47, material: HOPPER, name: "<gray>Showing: <white><filter>", lore: ["<yellow>Click to change"] }
+  previous-slot: 45
+  close-slot: 49
+  next-slot: 53
+
+# One report with its actions. Every button checks permission when clicked.
+report-detail:
+  title: "Report #<id>"
+  rows: 5
+  summary:
+    slot: 4
+    material: PAPER
+    name: "<white>#<id> <target>"
+    lore:
+      - "<gray>Reported by: <white><reporter>"
+      - "<gray>Reason: <white><reason>"
+      - "<gray>Submitted: <white><date></white> <dark_gray>(<ago> ago)"
+      - "<gray>Server: <white><server>"
+      - "<gray>Location: <white><location>"
+      - "<gray>Status: <status>"
+      - "<claimed-line>"
+      - "<closed-line>"
+  # <location> when the reporter's location isn't known.
+  no-location: "unknown"
+  closed-line: "<gray>Closed by <white><staff></white> on <white><date></white><gray>: <white><note>"
+  claim:   { slot: 10, material: LIME_DYE, name: "<green>Claim", lore: ["<gray>Mark that you're handling it."] }
+  unclaim: { slot: 10, material: GRAY_DYE, name: "<yellow>Unclaim", lore: ["<gray>Let someone else handle it."] }
+  resolve: { slot: 12, material: EMERALD, name: "<green>Resolve", lore: ["<gray>The report was right. You'll be asked for a note."] }
+  reject:  { slot: 14, material: REDSTONE, name: "<red>Reject", lore: ["<gray>Nothing to act on. You'll be asked for a note."] }
+  add-note: { slot: 16, material: WRITABLE_BOOK, name: "<white>Add note", lore: ["<gray>Internal: only staff see notes."] }
+  # Shown instead of claim/resolve/reject when they can't be used (closed, or claimed by someone else).
+  unavailable: { material: LIGHT_GRAY_STAINED_GLASS_PANE, name: "<dark_gray><name>", lore: ["<gray><why>"] }
+  why-closed: "The report is closed."
+  why-claimed: "Claimed by <staff>."
+  punish: { slot: 23, material: IRON_AXE, name: "<red>Punish <target>", lore: ["<gray>Opens the punish menu."] }
+  history: { slot: 25, material: BOOKSHELF, name: "<aqua>History of <target>" }
+  # The latest notes (up to as many as there are slots), newest first.
+  note-slots: [28, 29, 30, 31, 32, 33, 34]
+  note: { material: PAPER, name: "<white><author> <dark_gray><date>", lore: ["<gray><text>"] }
+  back-slot: 36
+  all-notes: { slot: 44, material: BOOK, name: "<white>All notes (<count>)" }
+
+# Every note of a report, 45 a page, newest first.
+report-notes:
+  title: "Notes on #<id> (<page>/<pages>)"
+  rows: 6
+  previous-slot: 45
+  back-slot: 49
+  next-slot: 53

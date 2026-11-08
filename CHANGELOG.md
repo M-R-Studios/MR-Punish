@@ -32,5 +32,8 @@
 - Removing a punishment from the history (right-click, or Remove in the details) with a typed reason; only active punishments, and only by staff ranked at least as high as whoever issued it. Removed entries stay in the history.
 - The `/punish` head now counts IP punishments on the player's recent IPs too.
 
+- `/report <player> [reason...]` with a reason menu (configured reasons and a typed "Other"), a cooldown, duplicate protection and a cap on open reports per player.
+- `/reports` for staff: a list with filters, and a detail view to claim, unclaim, resolve or reject (with a note), add notes, and open the player's punish menu or history. Claims expire; staff are reminded of open reports; the reporter is told the outcome now or on their next join. Two staff acting on the same report can't both change it.
+
 ### Changed
 - `/mute` and `/ban` (and `/muteip`, `/banip`) from a player now open the confirmation menu instead of applying straight away; without a reason, `/warn`, `/mute` and `/ban` open the reason menu. Console is unchanged.

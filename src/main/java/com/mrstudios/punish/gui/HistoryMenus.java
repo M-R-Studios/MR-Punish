@@ -101,6 +101,8 @@ public final class HistoryMenus {
         StatusFilter status = StatusFilter.ALL;
         /** Where Back goes; null closes. */
         final Consumer<Player> back;
+        /** Bumped by every open: only the newest requested page is ever shown. */
+        int generation;
 
         public View(UUID targetUuid, String targetName, int page, Consumer<Player> back) {
             this.targetUuid = targetUuid;
@@ -246,8 +248,31 @@ public final class HistoryMenus {
 
     // ---- Entry points ----
 
+    /**
+     * Loads the page {@code view} asks for, then opens it. The menu the viewer has open (if any)
+     * stays until the page has arrived, so a menu is never shown without its entries. If the view is
+     * opened again meanwhile (another filter or page click), only the newest request is shown.
+     */
     public void open(Player viewer, View view) {
-        new HistoryMenu(viewer, view).open(viewer);
+        int generation = ++view.generation;
+        HistoryFilter filter = view.filter();
+        load(view.targetUuid, view.targetName, filter, view.page, PAGE_SIZE).whenComplete((loaded, error) ->
+                plugin.getServer().getScheduler().runTask(plugin, () -> {
+                    if (!viewer.isOnline() || generation != view.generation) {
+                        return;
+                    }
+                    if (error != null) {
+                        messages().send(viewer, "general.storage-unavailable");
+                        return;
+                    }
+                    if (!viewer.hasPermission(PERMISSION)) {
+                        denied(viewer, "general.no-permission");
+                        viewer.closeInventory();
+                        return;
+                    }
+                    view.page = loaded.page();
+                    new HistoryMenu(viewer, view, loaded, filter).open(viewer);
+                }));
     }
 
     /** Console (and any non-player): 10 lines per page. */
@@ -344,15 +369,18 @@ public final class HistoryMenus {
     final class HistoryMenu extends MenuHolder {
 
         private final View view;
-        private Page page;
-        private boolean loading;
+        private final Page page;
+        /** The filter this page was loaded with (the view may have moved on since). */
+        private final HistoryFilter filter;
 
-        HistoryMenu(Player viewer, View view) {
+        HistoryMenu(Player viewer, View view, Page loaded, HistoryFilter filter) {
             super(viewer.getUniqueId(), gui().number("history-menu.rows"), Items.render(gui().text("history-menu.title"),
                     TagResolver.resolver(Placeholder.unparsed("player", view.targetName),
-                            Placeholder.unparsed("page", String.valueOf(view.page + 1)),
-                            Placeholder.unparsed("pages", "…"))));
+                            Placeholder.unparsed("page", String.valueOf(loaded.page() + 1)),
+                            Placeholder.unparsed("pages", String.valueOf(loaded.pages())))));
             this.view = view;
+            this.page = loaded;
+            this.filter = filter;
         }
 
         @Override
@@ -360,10 +388,7 @@ public final class HistoryMenus {
             GuiSettings g = gui();
             Player viewer = plugin.getServer().getPlayer(viewer());
             long now = System.currentTimeMillis();
-            if (page == null) {
-                set(22, items.build(g.item("common.loading"), TagResolver.empty()), null);
-                load();
-            } else if (page.entries().isEmpty()) {
+            if (page.entries().isEmpty()) {
                 set(g.number("history-menu.empty.slot"), items.build(g.item("history-menu.empty"),
                         TagResolver.empty()), null);
             } else {
@@ -372,26 +397,22 @@ public final class HistoryMenus {
                     set(slot++, entry(viewer, p, page, now, true), (who, click) -> clicked(who, p, click));
                 }
             }
-            if (page != null && page.page() > 0) {
+            if (page.page() > 0) {
                 set(g.number("history-menu.previous-slot"), items.build(g.item("common.previous"), TagResolver.empty()),
-                        (who, click) -> turn(who, view.page - 1));
+                        (who, click) -> turn(who, filter, page.page() - 1));
             }
-            if (page != null && page.page() < page.pages() - 1) {
+            if (page.page() < page.pages() - 1) {
                 set(g.number("history-menu.next-slot"), items.build(g.item("common.next"), TagResolver.empty()),
-                        (who, click) -> turn(who, view.page + 1));
+                        (who, click) -> turn(who, filter, page.page() + 1));
             }
             String all = g.text("history-menu.filter-all");
             set(g.number("history-menu.type-filter.slot"), items.build(g.item("history-menu.type-filter"),
-                    Placeholder.unparsed("filter", view.type == null ? all : typeName(view.type))), (who, click) -> {
-                        view.type = nextType(view.type);
-                        turn(who, 0);
-                    });
+                    Placeholder.unparsed("filter", filter.type() == null ? all : typeName(filter.type()))),
+                    (who, click) -> turn(who, new HistoryFilter(nextType(filter.type()), filter.status()), 0));
             set(g.number("history-menu.status-filter.slot"), items.build(g.item("history-menu.status-filter"),
-                    Placeholder.parsed("filter", view.status == StatusFilter.ALL ? MINI.escapeTags(all)
-                            : messages().raw("status." + view.status.name()))), (who, click) -> {
-                        view.status = nextStatus(view.status);
-                        turn(who, 0);
-                    });
+                    Placeholder.parsed("filter", filter.status() == StatusFilter.ALL ? MINI.escapeTags(all)
+                            : messages().raw("status." + filter.status().name()))),
+                    (who, click) -> turn(who, new HistoryFilter(filter.type(), nextStatus(filter.status())), 0));
             set(g.number("history-menu.back-slot"), items.build(g.item(view.back == null ? "common.close"
                     : "common.back"), TagResolver.empty()), (who, click) -> {
                         sound(who, "click");
@@ -404,13 +425,16 @@ public final class HistoryMenus {
             fill(items.build(g.item("filler"), TagResolver.empty()));
         }
 
-        private void turn(Player who, int to) {
+        /** Shows {@code to} of {@code next}, computed from what this menu shows (not the live view). */
+        private void turn(Player who, HistoryFilter next, int to) {
             if (!who.hasPermission(PERMISSION)) {
                 denied(who, "general.no-permission");
                 who.closeInventory();
                 return;
             }
             sound(who, "page");
+            view.type = next.type();
+            view.status = next.status();
             view.page = Math.max(0, to);
             HistoryMenus.this.open(who, view);
         }
@@ -427,40 +451,6 @@ public final class HistoryMenus {
             }
             sound(who, "click");
             new DetailMenu(who, view, p, page).open(who);
-        }
-
-        private void load() {
-            if (loading) {
-                return;
-            }
-            loading = true;
-            int version = renderVersion();
-            HistoryMenus.this.load(view.targetUuid, view.targetName, view.filter(), view.page, PAGE_SIZE)
-                    .whenComplete((loaded, error) -> plugin.getServer().getScheduler().runTask(plugin, () -> {
-                        loading = false;
-                        Player viewer = plugin.getServer().getPlayer(viewer());
-                        if (error != null) {
-                            if (viewer != null && isShowing()) {
-                                messages().send(viewer, "general.storage-unavailable");
-                            }
-                            return;
-                        }
-                        if (!isShowing() || renderVersion() != version || viewer == null) {
-                            return;
-                        }
-                        view.page = loaded.page();
-                        // The title shows the page count, so the menu is opened again with it.
-                        new HistoryMenu(viewer, view, loaded).open(viewer);
-                    }));
-        }
-
-        HistoryMenu(Player viewer, View view, Page loaded) {
-            super(viewer.getUniqueId(), gui().number("history-menu.rows"), Items.render(gui().text("history-menu.title"),
-                    TagResolver.resolver(Placeholder.unparsed("player", view.targetName),
-                            Placeholder.unparsed("page", String.valueOf(loaded.page() + 1)),
-                            Placeholder.unparsed("pages", String.valueOf(loaded.pages())))));
-            this.view = view;
-            this.page = loaded;
         }
     }
 

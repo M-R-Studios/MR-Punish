@@ -67,7 +67,10 @@ public final class MiniMessageCheck {
                     // Falls through: reported below.
                 }
                 arguments.reset();
-                record(name, arguments, " has invalid arguments");
+                // The parser also resolves closing tags (</click>), which carry no arguments.
+                if (arguments.hasNext()) {
+                    record(name, arguments, " has invalid arguments");
+                }
             } else {
                 record(name, arguments, " is not a valid tag here");
             }

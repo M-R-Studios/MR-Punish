@@ -42,7 +42,7 @@ public final class SettingsLoader {
 
     private static final Set<String> TOP_LEVEL = Set.of("config-version", "escalation", "fallback-reasons", "reasons",
             "commands", "storage", "server-name", "warnings", "announcements", "hooks", "sounds", "date-format",
-            "time-zone", "appeal-link", "ban", "login", "input", "mute", "ip", "bedrock");
+            "time-zone", "appeal-link", "ban", "login", "input", "mute", "ip", "bedrock", "reports");
     private static final Set<String> REASON_FIELDS = Set.of("type", "display", "description", "icon", "slot", "aliases",
             "escalation", "history-period", "permission", "enabled");
     private static final Set<String> TOGGLE_FIELDS = Set.of("enabled", "aliases");
@@ -178,8 +178,10 @@ public final class SettingsLoader {
                 new Settings.SoundSetting(true, NamespacedKey.minecraft("entity.villager.no"), 1.0f, 1.0f));
         Settings.SoundSetting warned = sound(r, "sounds.warned",
                 new Settings.SoundSetting(true, NamespacedKey.minecraft("block.note_block.bass"), 1.0f, 0.6f));
-        warnUnknownIn(yaml, "sounds", Set.of("notify", "punished", "failed", "warned"), warnings);
-        for (String name : List.of("notify", "punished", "failed", "warned")) {
+        Settings.SoundSetting reportSound = sound(r, "sounds.report",
+                new Settings.SoundSetting(true, NamespacedKey.minecraft("block.note_block.chime"), 0.8f, 1.2f));
+        warnUnknownIn(yaml, "sounds", Set.of("notify", "punished", "failed", "warned", "report"), warnings);
+        for (String name : List.of("notify", "punished", "failed", "warned", "report")) {
             warnUnknownIn(yaml, "sounds." + name, Set.of("enabled", "sound", "volume", "pitch"), warnings);
         }
 
@@ -243,10 +245,50 @@ public final class SettingsLoader {
         warnUnknownIn(yaml, "input", Set.of("max-text-length", "chat-timeout-seconds", "cancel-word"), warnings);
         boolean floodgate = r.bool("bedrock.floodgate", true);
         warnUnknownIn(yaml, "bedrock", Set.of("floodgate"), warnings);
+        Settings.Reports reports = new Settings.Reports(r.wholeNumber("reports.cooldown-seconds", 0, 86_400, 60),
+                r.wholeNumber("reports.max-open-per-player", 1, 100, 3), r.bool("reports.allow-reporting-staff", true),
+                r.wholeNumber("reports.claim-timeout-minutes", 0, 10_080, 30),
+                r.wholeNumber("reports.reminder-minutes", 0, 1440, 10), reportReasons(yaml, warnings), reportSound);
+        warnUnknownIn(yaml, "reports", Set.of("cooldown-seconds", "max-open-per-player", "allow-reporting-staff",
+                "claim-timeout-minutes", "reminder-minutes", "reasons"), warnings);
 
         return LoadResult.loaded(new Settings(historyPeriod, registry, commands, storage, serverName, activeFor,
                 announcements, luckperms, notify, display, login, kickOnline, maxText, punished, failed, warnTitle,
-                mute, warned, ip, input, floodgate), warnings);
+                mute, warned, ip, input, floodgate, reports), warnings);
+    }
+
+    /** {@code reports.reasons}: key -> display and icon. A bad entry is skipped with a warning. */
+    private List<Settings.ReportReason> reportReasons(YamlConfiguration yaml, List<String> warnings) {
+        List<Settings.ReportReason> out = new java.util.ArrayList<>();
+        org.bukkit.configuration.ConfigurationSection section = yaml.getConfigurationSection("reports.reasons");
+        if (section == null) {
+            if (yaml.contains("reports.reasons")) {
+                warnings.add("reports.reasons is not a list of reasons, so only \"Other\" is offered");
+            }
+            return out;
+        }
+        for (String raw : section.getKeys(false)) {
+            String key = raw.toLowerCase(Locale.ROOT);
+            org.bukkit.configuration.ConfigurationSection reason = section.getConfigurationSection(raw);
+            if (reason == null || !key.matches("[a-z0-9_-]{1,64}")) {
+                warnings.add("reports.reasons." + raw + " is not a reason with a display and an icon, skipped");
+                continue;
+            }
+            String display = reason.getString("display", raw);
+            String icon = reason.getString("icon", "PAPER").strip().toUpperCase(Locale.ROOT);
+            if (!isItem.test(icon)) {
+                warnings.add("reports.reasons." + raw + ".icon: '" + icon + "' is not an item, using PAPER");
+                icon = "PAPER";
+            }
+            String problem = MiniMessageCheck.problem(display, List.of());
+            if (problem != null) {
+                warnings.add("reports.reasons." + raw + ".display: " + problem + ", using the key");
+                display = raw;
+            }
+            out.add(new Settings.ReportReason(key, display, icon));
+            warnUnknownIn(yaml, "reports.reasons." + raw, Set.of("display", "icon"), warnings);
+        }
+        return out;
     }
 
     private Settings.SoundSetting sound(YamlReader r, String section, Settings.SoundSetting def) {

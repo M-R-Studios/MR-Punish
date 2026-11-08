@@ -60,6 +60,9 @@ input:
   empty: "<prefix><red>That was empty. Try again or type <cancel-word>."
   form-title-note: "Note"
   form-title-reason: "Removal reason"
+  form-title-report: "Report reason"
+  form-title-report-note: "Report note"
+  form-title-decision: "Decision note"
   form-label: "Type here"
 
 # A punishment's status as shown in /history (menu and console).
@@ -80,6 +83,44 @@ history:
   remove-prompt: "<prefix><gray>Type a removal reason for #<id> in chat (<white>-</white> for none), or <white><cancel-word></white>."
   # The punishment isn't active any more (expired, replaced or removed meanwhile).
   not-active: "<prefix><red>#<id> isn't active, so it can't be removed."
+
+# Reports (/report, /reports).
+reports:
+  sent: "<prefix><green>Thanks. Your report on <white><player></white> was sent to staff (#<id>)."
+  cooldown: "<prefix><red>Wait <remaining> before reporting again."
+  duplicate: "<prefix><red>You already reported <player>. Staff are looking at it (#<id>)."
+  too-many: "<prefix><red>You have <max> open reports. Wait until staff have handled them."
+  self: "<prefix><red>You can't report yourself."
+  staff: "<prefix><red>You can't report staff members."
+  failed: "<prefix><red>Your report could not be saved (error <error-id>). Please try again."
+  # To online staff with mrpunish.reports. Click opens /reports.
+  new: "<dark_gray>[<gold>Report<dark_gray>] <white><reporter></white> <gray>reported</gray> <white><target></white><gray>: <reason> (#<id>)</gray> <click:run_command:'/reports'><yellow>[view]</yellow></click>"
+  claimed: "<prefix><gray>You claimed report #<id>."
+  already-claimed: "<prefix><red>Report #<id> is claimed by <staff>."
+  unclaimed: "<prefix><gray>Released report #<id>."
+  claim-expired: "<prefix><gray>Your claim on report #<id> expired."
+  closed: "<prefix><red>Report #<id> is already closed."
+  not-found: "<prefix><red>There is no report #<id>."
+  # A claim, decision or note could not be saved.
+  action-failed: "<prefix><red>The change to report #<id> could not be saved (error <error-id>)."
+  # To online staff with mrpunish.reports.
+  resolved: "<dark_gray>[<gold>Report<dark_gray>] <white><staff></white> <gray>resolved #<id> (<target>)."
+  rejected: "<dark_gray>[<gold>Report<dark_gray>] <white><staff></white> <gray>rejected #<id> (<target>)."
+  note-added: "<prefix><gray>Note added to report #<id>."
+  # To the reporter, now or on their next join.
+  reporter-resolved: "<prefix><green>Your report on <white><target></white> was handled by staff. Thank you!"
+  reporter-rejected: "<prefix><gray>Your report on <white><target></white> was reviewed and closed."
+  reminder: "<dark_gray>[<gold>Report<dark_gray>] <yellow><count> open report(s).</yellow> <click:run_command:'/reports'><yellow>[view]</yellow></click>"
+  prompt-reason: "<prefix><gray>Type the reason for reporting <white><player></white> in chat, or <white><cancel-word></white>."
+  prompt-note: "<prefix><gray>Type a note for report #<id>, or <white><cancel-word></white>."
+  prompt-decision: "<prefix><gray>Type a short note on your decision for #<id> (or <white>-</white> for none), or <white><cancel-word></white>."
+  changed: "<prefix><yellow>Report #<id> was changed by someone else. Showing the latest version."
+  # A report's status in the menus.
+  status:
+    OPEN: "<yellow>Open"
+    CLAIMED: "<aqua>Claimed"
+    RESOLVED: "<green>Resolved"
+    REJECTED: "<gray>Rejected"
 
 # Sent to the punished player
 target:

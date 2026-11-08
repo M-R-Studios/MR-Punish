@@ -24,10 +24,15 @@ import com.mrstudios.punish.rank.RankCache;
 import com.mrstudios.punish.rank.RankRegistrar;
 import com.mrstudios.punish.command.PunishCommand;
 import com.mrstudios.punish.command.HistoryCommand;
+import com.mrstudios.punish.command.ReportCommand;
+import com.mrstudios.punish.command.ReportsCommand;
 import com.mrstudios.punish.command.PunishMenuCommand;
 import com.mrstudios.punish.gui.BedrockForms;
 import com.mrstudios.punish.gui.DisplayGuard;
 import com.mrstudios.punish.gui.HistoryMenus;
+import com.mrstudios.punish.gui.ReportMenus;
+import com.mrstudios.punish.report.ReportNotices;
+import com.mrstudios.punish.report.ReportService;
 import com.mrstudios.punish.gui.Items;
 import com.mrstudios.punish.gui.MenuHolder;
 import com.mrstudios.punish.gui.MenuListener;
@@ -102,6 +107,8 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
     private PromptService prompts;
     private PunishMenus menus;
     private HistoryMenus history;
+    private ReportService reports;
+    private ReportMenus reportMenus;
     /** {@code bedrock.floodgate} as at startup (changing it needs a restart). */
     private boolean floodgateSetting;
     private IpFeatures ip;
@@ -127,7 +134,7 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
                 PunishCommand.warn(this), RemoveCommand.unwarn(this), PunishCommand.mute(this),
                 RemoveCommand.unmute(this), PunishCommand.muteip(this), PunishCommand.banip(this),
                 RemoveCommand.unmuteip(this), RemoveCommand.unbanip(this), new PunishMenuCommand(this),
-                new HistoryCommand(this));
+                new HistoryCommand(this), new ReportCommand(this), new ReportsCommand(this));
         Set<String> reserved = new HashSet<>(AdminCommand.ALIASES);
         reserved.add(AdminCommand.LABEL);
 
@@ -423,6 +430,23 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
         getServer().getPluginManager().registerEvents(new DisplayGuard(items, getLogger()), this);
         menus = new PunishMenus(this, items, prompts);
         history = new HistoryMenus(this, items, prompts);
+        reports = new ReportService(storage, () -> state, task -> getServer().getScheduler().runTask(this, task),
+                System::currentTimeMillis, getLogger());
+        ReportNotices notices = new ReportNotices(this, () -> state, reports, getLogger());
+        reports.listener(notices);
+        getServer().getPluginManager().registerEvents(notices, this);
+        reportMenus = new ReportMenus(this, items, prompts);
+        // Every minute: release expired claims, and remind staff of open reports when it's time.
+        getServer().getScheduler().runTaskTimer(this, notices::tick, 20L * 60, 20L * 60);
+        reports.refreshOpenCount();
+    }
+
+    public ReportService reports() {
+        return reports;
+    }
+
+    public ReportMenus reportMenus() {
+        return reportMenus;
     }
 
     public HistoryMenus history() {

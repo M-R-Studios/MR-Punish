@@ -35,7 +35,7 @@ public record Settings(TimeSpan historyPeriod, ReasonRegistry reasons, Map<Strin
         Storage storage, String serverName, TimeSpan warningActiveFor, Map<PunishmentType, Boolean> announcements,
         boolean luckperms, SoundSetting notifySound, Display display, Login login, boolean banKickOnline,
         int maxTextLength, SoundSetting punishedSound, SoundSetting failedSound, boolean warnTitle, Mute mute,
-        SoundSetting warnedSound, Ip ip, Input input, boolean floodgate) {
+        SoundSetting warnedSound, Ip ip, Input input, boolean floodgate, Reports reports) {
 
     public Settings {
         commands = Map.copyOf(commands);
@@ -145,5 +145,26 @@ public record Settings(TimeSpan historyPeriod, ReasonRegistry reasons, Map<Strin
     /** The toggle for {@code name}; commands that aren't configured are on, with no extra labels. */
     public CommandToggle command(String name) {
         return commands.getOrDefault(name, CommandToggle.DEFAULT);
+    }
+
+    /**
+     * {@code reports.*} (DESIGN.md 13). Minutes of 0 turn the claim timeout or the reminder off.
+     *
+     * @param reasons the report reasons offered in the /report menu, in order
+     */
+    public record Reports(int cooldownSeconds, int maxOpenPerPlayer, boolean allowReportingStaff,
+            int claimTimeoutMinutes, int reminderMinutes, java.util.List<ReportReason> reasons, SoundSetting sound) {
+
+        public Reports {
+            reasons = java.util.List.copyOf(reasons);
+        }
+
+        public java.util.Optional<ReportReason> reason(String key) {
+            return reasons.stream().filter(r -> r.key().equals(key)).findFirst();
+        }
+    }
+
+    /** One configured report reason. @param display MiniMessage */
+    public record ReportReason(String key, String display, String icon) {
     }
 }

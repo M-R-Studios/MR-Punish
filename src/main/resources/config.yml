@@ -322,6 +322,27 @@ input:
   # Maximum length of typed text: notes and removal reasons. Longer text is cut. Range 16-500.
   max-text-length: 200
 
+reports:
+  # Seconds a player must wait between two reports. Bypass: mrpunish.report.nocooldown
+  cooldown-seconds: 60
+  # A player can't report someone again while their earlier report about them is still open or
+  # claimed. This is the most open reports one player can have at a time.
+  max-open-per-player: 3
+  # Allow reporting staff members (players with mrpunish.staff).
+  allow-reporting-staff: true
+  # A claim is released automatically after this many minutes without a decision. 0 = never.
+  claim-timeout-minutes: 30
+  # Remind online staff (mrpunish.reports) of open reports every N minutes. 0 = never.
+  reminder-minutes: 10
+  # Report reasons in the /report menu: key: { display (MiniMessage), icon (an item) }.
+  # "Other" (a typed reason) is always offered too. /report <player> <text> works with any text.
+  reasons:
+    hacking: { display: "Hacking", icon: DIAMOND_SWORD }
+    spam: { display: "Spam", icon: PAPER }
+    toxicity: { display: "Toxicity", icon: BLAZE_POWDER }
+    harassment: { display: "Harassment", icon: IRON_SWORD }
+    griefing: { display: "Griefing", icon: FLINT_AND_STEEL }
+
 bedrock:
   # Use Floodgate (if installed) to show Bedrock players a form for typing text instead of chat.
   # Changing this needs a restart.
@@ -335,6 +356,8 @@ bedrock:
 commands:
   punish: { enabled: true, aliases: [p] }
   history: { enabled: true, aliases: [hist] }
+  report: { enabled: true, aliases: [] }
+  reports: { enabled: true, aliases: [] }
   ban:   { enabled: true, aliases: [] }
   unban: { enabled: true, aliases: [] }
   warn:   { enabled: true, aliases: [] }
@@ -387,3 +410,5 @@ sounds:
   failed: { enabled: true, sound: minecraft:entity.villager.no, volume: 1.0, pitch: 1.0 }
   # Played to the warned player.
   warned: { enabled: true, sound: minecraft:block.note_block.bass, volume: 1.0, pitch: 0.6 }
+  # Played to staff (mrpunish.reports) when a report comes in.
+  report: { enabled: true, sound: minecraft:block.note_block.chime, volume: 0.8, pitch: 1.2 }

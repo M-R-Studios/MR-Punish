@@ -56,6 +56,12 @@ Permissions and rank are checked again on every click. If someone else punishes 
 
 Left-click an entry for its details; with `mrpunish.remove` (and `mrpunish.ip` for IP punishments), right-click an active entry or use Remove in the details to remove it. You're asked for a reason in chat (or a form on Bedrock with Floodgate); `-` removes it without one, `cancel` goes back. Only active punishments can be removed, and only if your rank is at least that of whoever issued it. Nothing is ever deleted: removed entries stay in the history with who removed them, when and why. Console gets a text list, 10 a page.
 
+## Reports
+
+Any player can `/report <player> [reason...]`. Without a reason a menu offers the reasons from `config.yml` (`reports.reasons`) and "Other", which asks for a typed reason in chat (or a form on Bedrock with Floodgate). A player waits `reports.cooldown-seconds` between reports (`mrpunish.report.nocooldown` skips it), can't report the same player again while their earlier report is still open, and can have at most `reports.max-open-per-player` open reports. With `reports.allow-reporting-staff: false`, staff can't be reported.
+
+Staff with `mrpunish.reports` are told about each new report (click to open `/reports`) and reminded of open reports every `reports.reminder-minutes`. `/reports [open|claimed|mine|closed|all]` lists them, oldest open first. A report's details let staff claim it (others then can't decide it, except admins, which is logged), resolve or reject it with an optional note, add internal notes, and open the player's punish menu or history. A claim is released after `reports.claim-timeout-minutes` without a decision. The reporter is told the outcome at once, or on their next join. If two staff act on the same report at once, only the first change counts; the other is told it changed and sees the latest version. Reports and notes are never deleted.
+
 ## Bans
 
 `/ban <player> [-s] <reason> [note...]` bans with the reason's next escalation step from `config.yml`: the first word picks a ban reason by its key or one of its aliases, and the rest is a staff note. If the first word isn't a ban reason, the "other" ban reason is used and the whole text becomes the note. `-s` (anywhere after the name) skips the public announcement; staff are still notified. A new ban can never end sooner than an active one (remove it first to shorten it), and history is never deleted: replaced and removed bans stay visible with who, when and why. `/unban` removes every active ban of the player.
@@ -88,6 +94,8 @@ To give a label back to vanilla or another plugin, turn it off in `config.yml` (
 | `/mrpunish import vanilla [--clear]` | `mrpunish.import` | Imports vanilla's player bans; `--clear` removes the imported entries from the vanilla list afterwards. |
 | `/punish <player>` (alias `/p`) | `mrpunish.punish` | Opens the punish menu. Players only. |
 | `/history <player> [page]` (alias `/hist`) | `mrpunish.history` | The history menu; console gets a text list. Removing needs `mrpunish.remove`. |
+| `/report <player> [reason...]` | `mrpunish.report` (everyone) | Reports a player; without a reason, opens the reason menu. Players only. |
+| `/reports [open\|claimed\|mine\|closed\|all]` | `mrpunish.reports` | The reports menu. Players only. |
 | `/ban <player> [-s] <reason> [note...]` | `mrpunish.ban` | Bans with the reason's next escalation step. From a player: opens the confirmation (no reason: the reason menu). Works from console. |
 | `/unban <player> [reason...]` | `mrpunish.remove` | Removes every active ban of the player, recording the reason. |
 | `/mute <player> [-s] <reason> [note...]` | `mrpunish.mute` | Mutes with the reason's next escalation step. From a player: opens the confirmation (no reason: the reason menu). |

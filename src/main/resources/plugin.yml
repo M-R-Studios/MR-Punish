@@ -12,6 +12,7 @@ softdepend: [LuckPerms, floodgate]
 #   mrpunish (aliases staffhelper, mrp): help, reload, version, import vanilla [--clear]
 #   punish (alias p) <player>: the punish menu (players only)
 #   history (alias hist) <player> [page]: the history menu (console: a text list)
+#   report <player> [reason...]; reports [open|claimed|mine|closed|all] (players only)
 #   ban <player> [-s] <reason> [note...]
 #   unban <player> [reason...]
 #   warn <player> [-s] <reason> [note...]
