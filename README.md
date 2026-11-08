@@ -34,13 +34,21 @@ If the database can't be reached at startup or goes away while the server runs, 
 
 A muted player can't chat, can't use the commands in `mute.blocked-commands`, and (by default) can't write on signs or sign books. A command is blocked by every name it's known by: its aliases, namespaced forms such as `/minecraft:tell` or `/essentials:msg`, other plugins' aliases for the same command, and aliases in the server's `commands.yml` that run it. The muted player is told the reason and how long is left, at most every `mute.notify-cooldown-seconds`. A mute that runs out simply stops blocking. `/unmute` removes every active mute; `/unwarn <player> [id]` removes one warning (the most recent if no id is given).
 
+## IP punishments
+
+IP features are **off** by default (`ip.enabled: false`). While they're off, MR-Punish stores nothing about IP addresses, and the IP commands say they're disabled. Turn them on in `config.yml` and restart.
+
+When they're on, MR-Punish never stores or shows an IP address. It keeps only a keyed hash of each address (HMAC-SHA256), using a random secret in `plugins/MR-Punish/ip-secret.key` that's created the first time. **Back that file up**: if it's lost, existing IP punishments stop matching. On a network that shares one MySQL database, copy the same file to every server. If the key doesn't match the one the database was used with, IP features stay off and the console says why. IPv6 addresses are grouped by `ip.ipv6-prefix` (a /64 by default).
+
+`/banip` and `/muteip` punish the player's current IP (or the last one they were seen with). Every account on that IP is affected: online accounts are kicked or muted at once, and any account joining from it is refused or muted. Accounts seen on the same IP within `ip.association-days` count as associated: if any of them is exempt or has a rank equal to or higher than yours, the action is refused, and staff only ever see a count of accounts, never names or addresses. `/unbanip` and `/unmuteip` remove the IP punishments on every IP the player used within `ip.association-days`. A player's IP links are deleted after `ip.retention-days` without a login from that IP, and all of them are deleted at startup if IP features are turned off.
+
 ## Bans
 
 `/ban <player> [-s] <reason> [note...]` bans with the reason's next escalation step from `config.yml`: the first word picks a ban reason by its key or one of its aliases, and the rest is a staff note. If the first word isn't a ban reason, the "other" ban reason is used and the whole text becomes the note. `-s` (anywhere after the name) skips the public announcement; staff are still notified. A new ban can never end sooner than an active one (remove it first to shorten it), and history is never deleted: replaced and removed bans stay visible with who, when and why. `/unban` removes every active ban of the player.
 
 Bans are checked against the database at every login. If the database can't answer in time, `login.fail-policy` decides: `CACHE` (default) uses an in-memory copy of active bans, `DENY` refuses everyone who can't be checked, and `ALLOW` lets everyone in. Players let in without a check are checked again as soon as the database answers, and kicked if they're banned. Admins are told whenever logins can't be checked.
 
-**Vanilla bans.** MR-Punish doesn't read or change vanilla's ban list, and vanilla bans keep working by themselves (a player in vanilla's list is still refused by vanilla). Vanilla's own command stays available as `/minecraft:ban`, and `/pardon` only affects vanilla bans. `/mrpunish import vanilla` copies vanilla's player bans into MR-Punish once (running it again imports nothing new); `--clear` then removes the imported entries from the vanilla list. At startup the console says if vanilla bans exist.
+**Vanilla bans.** MR-Punish doesn't read or change vanilla's ban list, and vanilla bans keep working by themselves (a player in vanilla's list is still refused by vanilla). Vanilla's own command stays available as `/minecraft:ban`, and `/pardon` only affects vanilla bans. `/mrpunish import vanilla` copies vanilla's player bans (and, with IP features on, its IP bans, stored only as hashes) into MR-Punish once (running it again imports nothing new); `--clear` then removes the imported entries from the vanilla list. At startup the console says if vanilla bans exist.
 
 ## Staff ranks
 
@@ -70,6 +78,10 @@ To give a label back to vanilla or another plugin, turn it off in `config.yml` (
 | `/unmute <player> [reason...]` | `mrpunish.remove` | Removes every active mute of the player. |
 | `/warn <player> [-s] <reason> [note...]` | `mrpunish.warn` | Warns; an offline player is told on their next join. |
 | `/unwarn <player> [id] [reason...]` | `mrpunish.remove` | Removes warning `id` (a number, or `#12`), or the most recent active warning. |
+| `/banip <player> [-s] <reason> [note...]` (alias `/ipban`) | `mrpunish.ban` + `mrpunish.ip` | Bans the player's IP (IP features must be on). |
+| `/muteip <player> [-s] <reason> [note...]` (alias `/ipmute`) | `mrpunish.mute` + `mrpunish.ip` | Mutes the player's IP. |
+| `/unbanip <player> [reason...]` (alias `/ipunban`) | `mrpunish.remove` + `mrpunish.ip` | Removes the IP bans on every IP the player used recently. |
+| `/unmuteip <player> [reason...]` (alias `/ipunmute`) | `mrpunish.remove` + `mrpunish.ip` | Removes the IP mutes on every IP the player used recently. |
 
 ## Permissions
 

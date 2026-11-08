@@ -28,25 +28,44 @@ final class RemoveTx {
         this.actions = new ActionRepo(database);
     }
 
+    /** The hashes an IP removal covers: the request's list, or the target's single hash. */
+    private static List<String> hashes(Requests.Remove request) {
+        List<String> hashes = new ArrayList<>(request.ipHashes());
+        if (request.target().ipHash() != null && !hashes.contains(request.target().ipHash())) {
+            hashes.add(request.target().ipHash());
+        }
+        return hashes;
+    }
+
     /** @param reason the stored removal reason (the typed one, or the "no reason" text) */
     RemoveResult run(Connection c, Requests.Remove request, String reason, String server, long now) throws SQLException {
         Requests.Target target = request.target();
         PunishmentType type = request.type();
-        punishments.lock(c, target.uuid(), type.isIp() ? target.ipHash() : null);
-        Subject subject = Subject.of(type, target.uuid(), target.ipHash());
+        List<String> hashes = type.isIp() ? hashes(request) : List.of();
+        punishments.lock(c, target.uuid(), null);
+        for (String hash : hashes) {
+            punishments.lock(c, target.uuid(), hash);
+        }
 
         List<Punishment> chosen = new ArrayList<>();
         if (request.id() != null) {
             Optional<Punishment> found = punishments.byId(c, request.id());
             boolean belongs = found.isPresent() && found.get().type() == type && (type.isIp()
-                    ? found.get().ipHash() != null && found.get().ipHash().equals(target.ipHash())
+                    ? found.get().ipHash() != null && hashes.contains(found.get().ipHash())
                     : found.get().targetUuid().equals(target.uuid()));
             if (!belongs || !found.get().isActive(now)) {
                 return new RemoveResult.NotFound(request.id());
             }
             chosen.add(found.get());
         } else {
-            List<Punishment> active = punishments.active(c, type, subject, now);
+            List<Punishment> active = new ArrayList<>();
+            if (type.isIp()) {
+                for (String hash : hashes) {
+                    active.addAll(punishments.active(c, type, new Subject(null, hash), now));
+                }
+            } else {
+                active.addAll(punishments.active(c, type, Subject.of(type, target.uuid(), null), now));
+            }
             if (type == PunishmentType.WARN) {
                 active.stream().max(Comparator.comparingLong(Punishment::id)).ifPresent(chosen::add);
             } else {

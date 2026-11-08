@@ -76,7 +76,20 @@ public final class Requests {
      *               active one in the slot" (for warnings: the most recent active one)
      * @param reason the typed removal reason, or null for none
      */
-    public record Remove(Actor actor, Target target, PunishmentType type, Long id, String reason) {
+    public record Remove(Actor actor, Target target, PunishmentType type, Long id, String reason,
+            List<String> ipHashes) {
+
+        /**
+         * @param ipHashes IP types only: every hash whose active punishments of the type are removed
+         *                 (the hashes the player was seen with, DESIGN.md 8.3)
+         */
+        public Remove {
+            ipHashes = ipHashes == null ? List.of() : List.copyOf(ipHashes);
+        }
+
+        public Remove(Actor actor, Target target, PunishmentType type, Long id, String reason) {
+            this(actor, target, type, id, reason, List.of());
+        }
     }
 
     public sealed interface IssueResult {

@@ -32,6 +32,7 @@ import com.mrstudios.punish.enforce.BanEnforcement;
 import com.mrstudios.punish.imports.VanillaImporter;
 import com.mrstudios.punish.storage.StorageException;
 import com.mrstudios.punish.imports.VanillaBanLists;
+import com.mrstudios.punish.ip.IpFeatures;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import org.bukkit.BanEntry;
 import org.bukkit.ban.ProfileBanList;
@@ -87,6 +88,7 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
     private PunishmentService punishments;
     private BanEnforcement bans;
     private MuteEnforcement mutes;
+    private IpFeatures ip;
     /** Whether the LuckPerms hook was set up at startup (changing that needs a restart). */
     private boolean luckPermsHooked;
     private static final long RANK_REFRESH_TICKS = 60 * 20L;
@@ -107,7 +109,8 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
         // Commands that config.yml can switch off. Later steps add theirs.
         List<CommandRegistry.Switchable> switchable = List.of(PunishCommand.ban(this), RemoveCommand.unban(this),
                 PunishCommand.warn(this), RemoveCommand.unwarn(this), PunishCommand.mute(this),
-                RemoveCommand.unmute(this));
+                RemoveCommand.unmute(this), PunishCommand.muteip(this), PunishCommand.banip(this),
+                RemoveCommand.unmuteip(this), RemoveCommand.unbanip(this));
         Set<String> reserved = new HashSet<>(AdminCommand.ALIASES);
         reserved.add(AdminCommand.LABEL);
 
@@ -171,15 +174,21 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
         punishments = new PunishmentService(storage, () -> state, offline,
                 task -> getServer().getScheduler().runTask(this, task),
                 new Notifier(getServer()::getOnlinePlayers, getLogger()), System::currentTimeMillis, getLogger());
+        ip = new IpFeatures(state.settings().ip(), storage, getLogger());
+        ip.start(getDataFolder().toPath());
         MuteCache muteCache = new MuteCache();
-        bans = new BanEnforcement(this, storage, () -> state, new BanCache(), muteCache, System::currentTimeMillis,
+        bans = new BanEnforcement(this, storage, () -> state, new BanCache(), muteCache, ip, System::currentTimeMillis,
                 getLogger());
         getServer().getPluginManager().registerEvents(bans, this);
         punishments.addListener(bans);
-        mutes = new MuteEnforcement(this, storage, () -> state, muteCache, commandLookup(), System::currentTimeMillis,
-                getLogger());
+        mutes = new MuteEnforcement(this, storage, () -> state, muteCache, ip, commandLookup(),
+                System::currentTimeMillis, getLogger());
         getServer().getPluginManager().registerEvents(mutes, this);
         punishments.addListener(mutes);
+        // Players already online (after /reload): their connection's IP hash, before their mutes load.
+        for (Player player : getServer().getOnlinePlayers()) {
+            bans.track(player);
+        }
         mutes.loadOnline();
         bans.loadCache();
         // Players let in unverified are checked again as soon as the database answers (DESIGN.md 7.7 step 5).
@@ -226,6 +235,11 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
                 loadNames();
             }
             if (announce) {
+                // The IP key check may have been waiting for the database; caches load once it's done.
+                ip.verify().thenRun(() -> getServer().getScheduler().runTask(this, () -> {
+                    bans.loadCache();
+                    mutes.loadOnline();
+                }));
                 bans.loadCache();
                 mutes.loadOnline();
                 int rechecked = bans.recheckUnverified();
@@ -282,12 +296,23 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
                     entry.getExpiration() == null ? null : entry.getExpiration().getTime()));
         }
         int ipEntries = VanillaBanLists.ipCount(getServer());
+        // IP entries are hashed here and only the hash goes on (DESIGN.md 7.9, 8.1).
+        List<VanillaImporter.IpEntry> ipBans = new ArrayList<>();
+        if (ip.enabled()) {
+            for (org.bukkit.BanEntry<?> entry : VanillaBanLists.ips(getServer())) {
+                java.net.InetAddress address = VanillaBanLists.address(entry.getBanTarget());
+                Optional<String> hash = address == null ? Optional.empty() : ip.hash(address);
+                ipBans.add(new VanillaImporter.IpEntry(hash.orElse(null), entry.getReason(), entry.getSource(),
+                        entry.getCreated() == null ? System.currentTimeMillis() : entry.getCreated().getTime(),
+                        entry.getExpiration() == null ? null : entry.getExpiration().getTime()));
+            }
+        }
         messages.send(sender, "admin.import-start");
         UUID actorUuid = sender instanceof Player p ? p.getUniqueId() : null;
         String actorName = sender instanceof Player ? sender.getName() : messages.raw("general.console-name");
         String server = state.settings().effectiveServerName();
         storage.executor().transaction("importing vanilla bans", c -> new VanillaImporter(storage.database())
-                        .run(c, entries, actorName, actorUuid, server, System.currentTimeMillis()))
+                        .run(c, entries, ipBans, actorName, actorUuid, server, System.currentTimeMillis()))
                 .whenComplete((result, error) -> getServer().getScheduler().runTask(this, () -> {
                     Messages m = state.messages();
                     if (error != null) {
@@ -301,8 +326,10 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
                             Placeholder.unparsed("players", String.valueOf(result.players())),
                             Placeholder.unparsed("skipped", String.valueOf(result.skipped())),
                             Placeholder.unparsed("unknown", String.valueOf(result.unknown())));
-                    if (ipEntries > 0) {
-                        m.send(sender, "admin.import-ip-skipped", Placeholder.unparsed("count", String.valueOf(ipEntries)));
+                    if (ip.enabled()) {
+                        m.send(sender, "admin.import-done-ips", Placeholder.unparsed("ips", String.valueOf(result.ips())));
+                    } else if (ipEntries > 0) {
+                        m.send(sender, "admin.import-ip-disabled", Placeholder.unparsed("count", String.valueOf(ipEntries)));
                     }
                     getLogger().info(sender.getName() + " imported vanilla bans: " + result.players() + " imported, "
                             + result.skipped() + " already imported, " + result.unknown() + " unreadable.");
@@ -318,6 +345,7 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
                                 cleared++;
                             }
                         }
+                        cleared += VanillaBanLists.pardonIps(getServer(), result.importedIpHashes(), ip);
                         m.send(sender, "admin.import-cleared", Placeholder.unparsed("count", String.valueOf(cleared)));
                     }
                 }));
@@ -347,7 +375,8 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
             return;
         }
         storage.executor().transaction("running the daily clean-up",
-                c -> new Retention(storage.database()).run(c, System.currentTimeMillis()))
+                c -> new Retention(storage.database()).run(c, System.currentTimeMillis(),
+                        ip.enabled() ? state.settings().ip().retentionDays() : 0))
                 .thenAccept(deleted -> {
                     int total = deleted.values().stream().mapToInt(Integer::intValue).sum();
                     if (total > 0) {
@@ -423,6 +452,15 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
     /** Issues and removes punishments. Commands and menus arrive in later steps. */
     public PunishmentService punishments() {
         return punishments;
+    }
+
+    public IpFeatures ip() {
+        return ip;
+    }
+
+    @Override
+    public String ipStatus() {
+        return ip == null ? "off" : ip.describe();
     }
 
     public BanEnforcement bans() {
@@ -508,6 +546,9 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
         }
         if (loaded.settings().ok() && !updated.settings().storage().equals(storage.settings())) {
             restartNeeded.add("storage");
+        }
+        if (loaded.settings().ok() && updated.settings().ip().enabled() != ip.settings().enabled()) {
+            restartNeeded.add("ip.enabled");
         }
         boolean wantLuckPerms = updated.settings().luckperms()
                 && getServer().getPluginManager().isPluginEnabled("LuckPerms");

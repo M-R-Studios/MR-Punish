@@ -46,6 +46,14 @@ public final class RemoveCommand implements CommandRegistry.Switchable {
         return new RemoveCommand(plugin, PunishmentType.MUTE, "unmute", "Remove a player's active mute.");
     }
 
+    public static RemoveCommand unmuteip(MRPunish plugin) {
+        return new RemoveCommand(plugin, PunishmentType.IP_MUTE, "unmuteip", "Remove the IP mutes on a player's IPs.");
+    }
+
+    public static RemoveCommand unbanip(MRPunish plugin) {
+        return new RemoveCommand(plugin, PunishmentType.IP_BAN, "unbanip", "Remove the IP bans on a player's IPs.");
+    }
+
     public static RemoveCommand unban(MRPunish plugin) {
         return new RemoveCommand(plugin, PunishmentType.BAN, "unban", "Remove a player's active ban.");
     }
@@ -67,7 +75,8 @@ public final class RemoveCommand implements CommandRegistry.Switchable {
     @Override
     public LiteralArgumentBuilder<CommandSourceStack> build(String literal) {
         return Commands.literal(literal)
-                .requires(source -> source.getSender().hasPermission(PunishmentService.REMOVE))
+                .requires(source -> source.getSender().hasPermission(PunishmentService.REMOVE)
+                        && (!type.isIp() || source.getSender().hasPermission(PunishmentService.IP)))
                 .executes(ctx -> usage(ctx.getSource().getSender()))
                 .then(Commands.argument("player", StringArgumentType.word())
                         .suggests(shared.players())
@@ -84,7 +93,8 @@ public final class RemoveCommand implements CommandRegistry.Switchable {
     }
 
     int run(CommandSender sender, String player, String rest) {
-        if (!sender.hasPermission(PunishmentService.REMOVE)) {
+        if (!sender.hasPermission(PunishmentService.REMOVE)
+                || (type.isIp() && !sender.hasPermission(PunishmentService.IP))) {
             shared.messages().send(sender, "general.no-permission");
             return 0;
         }
@@ -100,6 +110,14 @@ public final class RemoveCommand implements CommandRegistry.Switchable {
         String why = shared.cleaned(text);
         Long chosen = id;
         shared.withTarget(sender, player, target -> {
+            if (type.isIp()) {
+                shared.withIpHashes(sender, target, hashes -> {
+                    Requests.Remove request = new Requests.Remove(shared.actor(sender), target, type, chosen, why,
+                            hashes);
+                    plugin.punishments().remove(request).thenAccept(result -> shared.report(sender, request, result));
+                });
+                return;
+            }
             Requests.Remove request = new Requests.Remove(shared.actor(sender), target, type, chosen, why);
             plugin.punishments().remove(request).thenAccept(result -> shared.report(sender, request, result));
         });

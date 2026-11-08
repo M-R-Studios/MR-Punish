@@ -21,3 +21,6 @@
 - Offline players' ranks are read from LuckPerms when it's installed.
 - `/warn` and `/unwarn`: warnings with escalation counting, a chat message, title and sound for the warned player, and delivery on the next join for players who were offline.
 - `/mute` and `/unmute`: a muted player can't chat, use blocked commands (`mute.blocked-commands`, including their aliases, namespaced forms and `commands.yml` aliases), write signs or sign books; they're told how long is left.
+- IP punishments, off by default (`ip.enabled`): `/banip`, `/muteip`, `/unbanip`, `/unmuteip`. Only keyed hashes of IP addresses are stored (secret in `ip-secret.key`); no address is ever shown, logged or stored. Every account on the IP is affected, accounts seen on it recently are rank-checked, and staff see only an account count.
+- `/mrpunish import vanilla` also imports vanilla IP bans when IP features are on.
+- `/mrpunish version` shows whether IP features are on.

@@ -159,8 +159,10 @@ public final class PunishmentService {
         CompletableFuture<Optional<Authority.Standing>> lp = target.live() != null
                 ? CompletableFuture.completedFuture(Optional.empty())
                 : offlineRank(target.uuid());
+        long now = clock.getAsLong();
         IssueTx.Context context = new IssueTx.Context(settings.historyPeriod(), settings.warningActiveFor(),
-                settings.effectiveServerName());
+                settings.effectiveServerName(),
+                now - java.util.concurrent.TimeUnit.DAYS.toMillis(settings.ip().associationDays()));
         CompletableFuture<IssueResult> result = lp.thenCompose(fromLuckPerms -> storage.executor()
                 .transaction("issuing a " + request.type() + " to " + target.name(),
                         c -> new IssueTx(storage.database()).run(c, request, fromLuckPerms, context, clock.getAsLong())));

@@ -26,6 +26,11 @@ punish:
   warned: "<prefix><green>Warned <white><player></white> for <reason> <gray>(#<id>, offence <offence>)."
   muted: "<prefix><green>Muted <white><player></white> for <reason> <gray>(<duration>, #<id>, offence <offence>)."
   banned: "<prefix><green>Banned <white><player></white> for <reason> <gray>(<duration>, #<id>, offence <offence>)."
+  ip-muted: "<prefix><green>IP-muted <white><player></white> for <reason> <gray>(<duration>, #<id>, <accounts> associated account(s))."
+  ip-banned: "<prefix><green>IP-banned <white><player></white> for <reason> <gray>(<duration>, #<id>, <accounts> associated account(s))."
+  ip-rank: "<prefix><red>You can't IP-punish <player>: <count> account(s) on that IP have a rank equal to or higher than yours, or are exempt."
+  ip-disabled: "<prefix><red>IP punishments are turned off (ip.enabled in config.yml)."
+  ip-unknown: "<prefix><red>No IP is known for <player> yet. They need to join once while IP features are on."
   replaced: "<prefix><gray>This replaces #<old-id>."
   failed: "<prefix><red>The punishment could not be saved, so it was NOT applied (error <error-id>)."
   would-shorten: "<prefix><red><player> already has an active <type> (#<id>) that ends <end> (<remaining> left). A new one can't end sooner. Remove it first to shorten it."
@@ -131,9 +136,9 @@ admin:
   # Shown instead when the sender can't use any of the commands above.
   help-none: "<prefix><gray>There are no MR-Punish commands you can use."
   # <version>: MR-Punish version. <server>: server software and Minecraft version.
-  # <storage>: the database in use. <storage-status>: connected, or why not.
+  # <storage>: the database in use. <storage-status>: connected, or why not. <ip-features>: IP features on or off (never an address).
   # <clashes>: command labels another plugin owns instead of MR-Punish, or "none".
-  version: "<prefix><gray>MR-Punish <white><version></white> on <white><server></white>. Storage: <white><storage></white> (<storage-status>). Clashes: <white><clashes></white>"
+  version: "<prefix><gray>MR-Punish <white><version></white> on <white><server></white>. Storage: <white><storage></white> (<storage-status>). IP features: <white><ip-features></white>. Clashes: <white><clashes></white>"
   reload-success: "<prefix><green>Reloaded config.yml, messages.yml, gui.yml, permissions.yml and scoreboard.yml."
   reload-warnings: "<prefix><yellow>Reloaded with <count> warning(s):"
   reload-failed: "<prefix><red>Reload failed for <file>; kept the previous settings for it:"
@@ -142,5 +147,6 @@ admin:
   import-start: "<prefix><gray>Importing vanilla bans…"
   import-done: "<prefix><green>Imported <players> player ban(s). Skipped <skipped> already imported, <unknown> unreadable."
   import-cleared: "<prefix><green>Removed <count> imported entries from the vanilla ban list."
-  import-ip-skipped: "<prefix><yellow><count> vanilla IP ban(s) were skipped: MR-Punish's IP features aren't available yet."
+  import-done-ips: "<prefix><green>Imported <ips> IP ban(s)."
+  import-ip-disabled: "<prefix><yellow><count> vanilla IP ban(s) were skipped: IP features are off."
   import-failed: "<prefix><red>Import failed (error <error-id>). Nothing was imported or cleared."

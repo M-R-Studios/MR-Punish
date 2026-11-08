@@ -47,6 +47,7 @@ public final class BanEnforcement implements Listener, PunishmentService.Listene
     private final Supplier<PluginState> state;
     private final BanCache cache;
     private final MuteCache mutes;
+    private final com.mrstudios.punish.ip.IpFeatures ip;
     private final LongSupplier clock;
     private final Logger log;
     private final Set<UUID> unverified = ConcurrentHashMap.newKeySet();
@@ -55,12 +56,13 @@ public final class BanEnforcement implements Listener, PunishmentService.Listene
     private final AtomicLong lastAlert = new AtomicLong(Long.MIN_VALUE / 2);
 
     public BanEnforcement(Plugin plugin, Storage storage, Supplier<PluginState> state, BanCache cache,
-            MuteCache mutes, LongSupplier clock, Logger log) {
+            MuteCache mutes, com.mrstudios.punish.ip.IpFeatures ip, LongSupplier clock, Logger log) {
         this.plugin = plugin;
         this.storage = storage;
         this.state = state;
         this.cache = cache;
         this.mutes = mutes;
+        this.ip = ip;
         this.clock = clock;
         this.log = log;
     }
@@ -84,10 +86,16 @@ public final class BanEnforcement implements Listener, PunishmentService.Listene
         PluginState current = state.get();
         Settings settings = current.settings();
         UUID uuid = event.getUniqueId();
+        // Hashed here and only here; the address itself goes nowhere (DESIGN.md 8.1).
+        String hash = ip.hash(event.getAddress()).orElse(null);
+        if (hash != null) {
+            ip.prepare(uuid, hash);
+        }
         String[] failure = new String[1];
-        LoginCheck.Lookup lookup = lookup(uuid, settings.login().timeoutMs(), failure);
+        LoginCheck.Lookup lookup = lookup(uuid, hash, settings.login().timeoutMs(), failure);
         long now = clock.getAsLong();
-        LoginCheck.Decision decision = LoginCheck.decide(uuid, lookup, settings.login().failPolicy(), cache, now);
+        LoginCheck.Decision decision = LoginCheck.decide(uuid, hash, lookup, settings.login().failPolicy(), cache,
+                now);
         switch (decision.outcome()) {
             case DENY_BANNED -> event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_BANNED,
                     BanScreen.of(current.messages(), settings.display(), decision.ban(), now));
@@ -99,6 +107,7 @@ public final class BanEnforcement implements Listener, PunishmentService.Listene
         if (lookup.ok()) {
             // Loaded together with the ban, so a muted player can't chat in their first seconds.
             mutes.set(uuid, lookup.mute());
+            mutes.setIp(hash, lookup.ipMute());
         }
         if (!lookup.ok()) {
             reportFailure(event.getName(), failure[0], settings.login().failPolicy(), decision.outcome());
@@ -106,14 +115,14 @@ public final class BanEnforcement implements Listener, PunishmentService.Listene
     }
 
     /** Asks the database for the account's active ban, waiting at most {@code timeoutMs}. Any thread but main. */
-    LoginCheck.Lookup lookup(UUID uuid, long timeoutMs, String[] failure) {
+    LoginCheck.Lookup lookup(UUID uuid, String hash, long timeoutMs, String[] failure) {
         if (!storage.health().isUp()) {
             failure[0] = "unavailable: " + storage.health().reason();
             return LoginCheck.Lookup.failed();
         }
         long now = clock.getAsLong();
         try {
-            return storage.executor().submit("checking a login", c -> find(c, uuid, now))
+            return storage.executor().submit("checking a login", c -> find(c, uuid, hash, now))
                     .get(timeoutMs, TimeUnit.MILLISECONDS);
         } catch (TimeoutException e) {
             failure[0] = "too slow (over " + timeoutMs + " ms)";
@@ -126,13 +135,25 @@ public final class BanEnforcement implements Listener, PunishmentService.Listene
         return LoginCheck.Lookup.failed();
     }
 
-    /** The account's latest-ending active ban and mute, in one read. Database thread. */
-    LoginCheck.Lookup find(java.sql.Connection c, UUID uuid, long now) throws java.sql.SQLException {
+    /**
+     * The account's latest-ending active ban (its own or an IP ban on {@code hash}), its mute and the
+     * IP mute on {@code hash}, in one read. Database thread.
+     *
+     * @param hash the connection's IP hash, or null when IP features are off
+     */
+    LoginCheck.Lookup find(java.sql.Connection c, UUID uuid, String hash, long now) throws java.sql.SQLException {
         PunishmentRepo repo = new PunishmentRepo(storage.database());
         PunishmentRepo.Subject subject = new PunishmentRepo.Subject(uuid, null);
         Comparator<Punishment> byEnd = Comparator.comparing(p -> p.expiresAt() == null ? Long.MAX_VALUE : p.expiresAt());
-        return LoginCheck.Lookup.of(repo.active(c, PunishmentType.BAN, subject, now).stream().max(byEnd),
-                repo.active(c, PunishmentType.MUTE, subject, now).stream().max(byEnd));
+        List<Punishment> bans = new java.util.ArrayList<>(repo.active(c, PunishmentType.BAN, subject, now));
+        Optional<Punishment> ipMute = Optional.empty();
+        if (hash != null) {
+            PunishmentRepo.Subject ipSubject = new PunishmentRepo.Subject(null, hash);
+            bans.addAll(repo.active(c, PunishmentType.IP_BAN, ipSubject, now));
+            ipMute = repo.active(c, PunishmentType.IP_MUTE, ipSubject, now).stream().max(byEnd);
+        }
+        return LoginCheck.Lookup.of(bans.stream().max(byEnd),
+                repo.active(c, PunishmentType.MUTE, subject, now).stream().max(byEnd), ipMute);
     }
 
     /** One WARNING per 10 s (with a count of the rest), one admin alert per minute (DESIGN.md 7.7). */
@@ -174,6 +195,32 @@ public final class BanEnforcement implements Listener, PunishmentService.Listene
         unverified.remove(event.getPlayer().getUniqueId());
     }
 
+    /** LOWEST, so the hash is known before anything else handles the join. */
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onJoin(org.bukkit.event.player.PlayerJoinEvent event) {
+        track(event.getPlayer());
+    }
+
+    /** Learns the hash of the player's connection and records the IP link (when IP features are on). */
+    public void track(Player player) {
+        java.net.InetSocketAddress address = player.getAddress();
+        Optional<String> hash = ip.joined(player.getUniqueId(), address == null ? null : address.getAddress());
+        if (hash.isPresent() && storage.health().isUp()) {
+            UUID uuid = player.getUniqueId();
+            long now = clock.getAsLong();
+            storage.executor().submit("recording an IP link",
+                    c -> {
+                        new com.mrstudios.punish.storage.IpRepo(storage.database()).seen(c, uuid, hash.get(), now);
+                        return null;
+                    });
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onQuitIp(PlayerQuitEvent event) {
+        ip.quit(event.getPlayer().getUniqueId());
+    }
+
     /**
      * Checks again everyone let in unverified who is still online; a ban found now kicks them.
      * Main thread. Returns how many checks were started.
@@ -191,10 +238,12 @@ public final class BanEnforcement implements Listener, PunishmentService.Listene
             }
             started++;
             long now = clock.getAsLong();
-            storage.executor().submit("re-checking " + player.getName(), c -> find(c, uuid, now))
+            String hash = ip.onlineHash(uuid).orElse(null);
+            storage.executor().submit("re-checking " + player.getName(), c -> find(c, uuid, hash, now))
                     .thenAccept(lookup -> plugin.getServer().getScheduler().runTask(plugin, () -> {
                         unverified.remove(uuid);
                         mutes.set(uuid, lookup.mute());
+                        mutes.setIp(hash, lookup.ipMute());
                         Optional<Punishment> ban = lookup.ban();
                         Player online = plugin.getServer().getPlayer(uuid);
                         if (ban.isPresent() && online != null) {
@@ -216,7 +265,14 @@ public final class BanEnforcement implements Listener, PunishmentService.Listene
         }
         long now = clock.getAsLong();
         storage.executor().submit("loading the active bans",
-                c -> new PunishmentRepo(storage.database()).allActive(c, PunishmentType.BAN, now))
+                c -> {
+                    PunishmentRepo repo = new PunishmentRepo(storage.database());
+                    List<Punishment> all = new java.util.ArrayList<>(repo.allActive(c, PunishmentType.BAN, now));
+                    if (ip.enabled()) {
+                        all.addAll(repo.allActive(c, PunishmentType.IP_BAN, now));
+                    }
+                    return all;
+                })
                 .thenAccept(bans -> {
                     cache.load(bans);
                     log.info("Loaded " + bans.size() + " active ban(s) into the login cache.");
@@ -228,21 +284,28 @@ public final class BanEnforcement implements Listener, PunishmentService.Listene
     @Override
     public void issued(PluginState snapshot, Requests.Issue request, Requests.IssueResult.Committed committed) {
         Punishment p = committed.punishment();
-        if (p.type() != PunishmentType.BAN) {
+        if (p.type() != PunishmentType.BAN && p.type() != PunishmentType.IP_BAN) {
             return;
         }
         cache.forget(committed.replaced());
         cache.put(p);
-        Player online = plugin.getServer().getPlayer(p.targetUuid());
-        if (online != null && snapshot.settings().banKickOnline()) {
-            online.kick(BanScreen.of(snapshot.messages(), snapshot.settings().display(), p, clock.getAsLong()),
-                    PlayerKickEvent.Cause.BANNED);
+        if (!snapshot.settings().banKickOnline()) {
+            return;
+        }
+        // An IP ban kicks every account on that IP right now (DESIGN.md 8.4).
+        List<UUID> targets = p.type() == PunishmentType.IP_BAN ? ip.onlineOn(p.ipHash()) : List.of(p.targetUuid());
+        for (UUID uuid : targets) {
+            Player online = plugin.getServer().getPlayer(uuid);
+            if (online != null) {
+                online.kick(BanScreen.of(snapshot.messages(), snapshot.settings().display(), p, clock.getAsLong()),
+                        PlayerKickEvent.Cause.BANNED);
+            }
         }
     }
 
     @Override
     public void removed(PluginState snapshot, Requests.Remove request, Requests.RemoveResult.Removed removed) {
-        if (request.type() == PunishmentType.BAN) {
+        if (request.type() == PunishmentType.BAN || request.type() == PunishmentType.IP_BAN) {
             cache.forget(removed.removed().stream().map(Punishment::id).toList());
         }
     }

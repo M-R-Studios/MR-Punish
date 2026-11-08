@@ -45,6 +45,14 @@ public final class PunishCommand implements CommandRegistry.Switchable {
         return new PunishCommand(plugin, PunishmentType.MUTE, "mute", "Mute a player with the reason's next step.");
     }
 
+    public static PunishCommand muteip(MRPunish plugin) {
+        return new PunishCommand(plugin, PunishmentType.IP_MUTE, "muteip", "Mute a player's IP.");
+    }
+
+    public static PunishCommand banip(MRPunish plugin) {
+        return new PunishCommand(plugin, PunishmentType.IP_BAN, "banip", "Ban a player's IP.");
+    }
+
     public static PunishCommand ban(MRPunish plugin) {
         return new PunishCommand(plugin, PunishmentType.BAN, "ban", "Ban a player with the reason's next step.");
     }
@@ -67,7 +75,8 @@ public final class PunishCommand implements CommandRegistry.Switchable {
     public LiteralArgumentBuilder<CommandSourceStack> build(String literal) {
         String permission = PunishmentService.permission(type);
         return Commands.literal(literal)
-                .requires(source -> source.getSender().hasPermission(permission))
+                .requires(source -> source.getSender().hasPermission(permission)
+                        && (!type.isIp() || source.getSender().hasPermission(PunishmentService.IP)))
                 .executes(ctx -> usage(ctx.getSource().getSender()))
                 .then(Commands.argument("player", StringArgumentType.word())
                         .suggests(shared.players())
@@ -85,7 +94,8 @@ public final class PunishCommand implements CommandRegistry.Switchable {
     }
 
     int run(CommandSender sender, String player, String rest) {
-        if (!sender.hasPermission(PunishmentService.permission(type))) {
+        if (!sender.hasPermission(PunishmentService.permission(type))
+                || (type.isIp() && !sender.hasPermission(PunishmentService.IP))) {
             shared.messages().send(sender, "general.no-permission");
             return 0;
         }
@@ -96,11 +106,18 @@ public final class PunishCommand implements CommandRegistry.Switchable {
         ReasonRegistry reasons = plugin.state().settings().reasons();
         ReasonRegistry.Resolution resolution = reasons.resolve(type, parsed.text()).orElseThrow();
         String note = shared.cleaned(resolution.note());
-        shared.withTarget(sender, player, target -> {
-            // Read again at the moment of the action (DESIGN.md 2.1 #4).
-            Requests.Issue request = new Requests.Issue(shared.actor(sender), target, resolution.reason(), note,
-                    parsed.silent(), Punishment.Origin.COMMAND, null);
-            plugin.punishments().issue(request).thenAccept(result -> shared.report(sender, request, result));
+        shared.withTarget(sender, player, found -> {
+            java.util.function.Consumer<Requests.Target> issue = target -> {
+                // Read again at the moment of the action (DESIGN.md 2.1 #4).
+                Requests.Issue request = new Requests.Issue(shared.actor(sender), target, resolution.reason(), note,
+                        parsed.silent(), Punishment.Origin.COMMAND, null);
+                plugin.punishments().issue(request).thenAccept(result -> shared.report(sender, request, result));
+            };
+            if (type.isIp()) {
+                shared.withIpTarget(sender, found, issue);
+            } else {
+                issue.accept(found);
+            }
         });
         return Command.SINGLE_SUCCESS;
     }

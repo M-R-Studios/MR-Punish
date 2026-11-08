@@ -16,6 +16,7 @@ import com.mrstudios.punish.punish.Requests;
 import com.mrstudios.punish.punish.Requests.IssueResult;
 import com.mrstudios.punish.punish.Requests.RemoveResult;
 import com.mrstudios.punish.punish.TargetResolver;
+import com.mrstudios.punish.rank.Authority;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import java.util.LinkedHashSet;
 import java.util.Locale;
@@ -86,6 +87,85 @@ final class PunishCommands {
                 : Requests.Target.offline(found.uuid(), found.name());
     }
 
+    /**
+     * For IP commands (DESIGN.md 8.3): finds the IP to punish (the online connection's, else the most
+     * recent one seen) and the accounts associated with it, then calls {@code then} on the main thread
+     * with a target carrying the hash and every other affected account. Never shows the IP.
+     */
+    void withIpTarget(CommandSender sender, Requests.Target target, Consumer<Requests.Target> then) {
+        com.mrstudios.punish.ip.IpFeatures ip = plugin.ip();
+        if (!ip.enabled()) {
+            messages().send(sender, "punish.ip-disabled");
+            return;
+        }
+        java.util.Optional<String> onlineHash = ip.onlineHash(target.uuid());
+        long since = ip.associationSince(System.currentTimeMillis());
+        plugin.storage().executor().submit("finding the IP of " + target.name(), c -> {
+            com.mrstudios.punish.storage.IpRepo repo = new com.mrstudios.punish.storage.IpRepo(
+                    plugin.storage().database());
+            java.util.Optional<String> hash = onlineHash.isPresent() ? onlineHash : repo.latestHash(c, target.uuid());
+            if (hash.isEmpty()) {
+                return null;
+            }
+            return new Object[] {hash.get(), repo.associated(c, hash.get(), since)};
+        }).whenComplete((found, error) -> plugin.getServer().getScheduler().runTask(plugin, () -> {
+            if (error != null) {
+                messages().send(sender, "general.storage-unavailable");
+                return;
+            }
+            if (found == null) {
+                messages().send(sender, "punish.ip-unknown", Placeholder.unparsed("player", target.name()));
+                return;
+            }
+            String hash = (String) found[0];
+            @SuppressWarnings("unchecked")
+            java.util.List<com.mrstudios.punish.storage.IpRepo.Seen> associated =
+                    (java.util.List<com.mrstudios.punish.storage.IpRepo.Seen>) found[1];
+            java.util.Map<java.util.UUID, com.mrstudios.punish.rank.Authority.Standing> others =
+                    new java.util.LinkedHashMap<>();
+            for (com.mrstudios.punish.storage.IpRepo.Seen seen : associated) {
+                others.put(seen.uuid(), new com.mrstudios.punish.rank.Authority.Standing(seen.uuid(), seen.name(),
+                        seen.weight(), seen.exempt()));
+            }
+            // Accounts online on that IP right now are read live (DESIGN.md 8.4).
+            for (java.util.UUID uuid : ip.onlineOn(hash)) {
+                Player online = plugin.getServer().getPlayer(uuid);
+                if (online != null) {
+                    others.put(uuid, plugin.rankCache().standing(online));
+                }
+            }
+            others.remove(target.uuid());
+            then.accept(new Requests.Target(target.uuid(), target.name(), target.live(), hash,
+                    new java.util.ArrayList<>(others.values())));
+        }));
+    }
+
+    /** For /unmuteip and /unbanip: every hash the player was seen with within association-days. */
+    void withIpHashes(CommandSender sender, Requests.Target target, Consumer<java.util.List<String>> then) {
+        com.mrstudios.punish.ip.IpFeatures ip = plugin.ip();
+        if (!ip.enabled()) {
+            messages().send(sender, "punish.ip-disabled");
+            return;
+        }
+        java.util.Optional<String> onlineHash = ip.onlineHash(target.uuid());
+        long since = ip.associationSince(System.currentTimeMillis());
+        plugin.storage().executor().submit("finding the IPs of " + target.name(), c ->
+                new com.mrstudios.punish.storage.IpRepo(plugin.storage().database()).hashesOf(c, target.uuid(), since))
+                .whenComplete((hashes, error) -> plugin.getServer().getScheduler().runTask(plugin, () -> {
+                    if (error != null) {
+                        messages().send(sender, "general.storage-unavailable");
+                        return;
+                    }
+                    java.util.List<String> all = new java.util.ArrayList<>(hashes);
+                    onlineHash.filter(h -> !all.contains(h)).ifPresent(all::add);
+                    if (all.isEmpty()) {
+                        messages().send(sender, "punish.ip-unknown", Placeholder.unparsed("player", target.name()));
+                        return;
+                    }
+                    then.accept(all);
+                }));
+    }
+
     String cleaned(String text) {
         return CommandArgs.clean(text, plugin.state().settings().maxTextLength());
     }
@@ -100,6 +180,7 @@ final class PunishCommands {
             case IssueResult.Committed c -> {
                 Punishment p = c.punishment();
                 m.send(sender, "punish." + verbKey(p.type()),
+                        Placeholder.unparsed("accounts", String.valueOf(1 + request.target().affected().size())),
                         Placeholder.unparsed("player", p.targetName()),
                         Placeholder.parsed("reason", p.reasonDisplay()),
                         Placeholder.unparsed("duration", p.durationMs() == null ? m.raw("general.permanent")
@@ -124,6 +205,11 @@ final class PunishCommands {
                             Placeholder.unparsed("end", state.settings().display().date(b.expiresAt())),
                             Placeholder.unparsed("remaining", DurationParser.format(b.expiresAt() - now)));
                 }
+                sound(sender, state.settings().failedSound());
+            }
+            case IssueResult.Refused r when request.type().isIp() && r.verdict() != Authority.Verdict.SELF -> {
+                m.send(sender, "punish.ip-rank", Placeholder.unparsed("player", player),
+                        Placeholder.unparsed("count", String.valueOf(r.refusedAccounts())));
                 sound(sender, state.settings().failedSound());
             }
             case IssueResult.Refused r -> {

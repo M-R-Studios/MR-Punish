@@ -23,7 +23,7 @@ public final class MessagesLoader {
      * Messages not listed take none.
      */
     private static final Map<String, Set<String>> PLACEHOLDERS = Map.ofEntries(
-            Map.entry("admin.version", Set.of("version", "server", "storage", "storage-status", "clashes")),
+            Map.entry("admin.version", Set.of("version", "server", "storage", "storage-status", "ip-features", "clashes")),
             Map.entry("general.warning-offence", Set.of("offence")),
             Map.entry("notify.issued", Set.of("staff", "type-verb", "target", "reason", "duration", "id", "silent",
                     "note")),
@@ -40,6 +40,12 @@ public final class MessagesLoader {
             Map.entry("general.usage", Set.of("usage")),
             Map.entry("punish.banned", Set.of("player", "reason", "duration", "id", "offence")),
             Map.entry("punish.warned", Set.of("player", "reason", "id", "offence")),
+            Map.entry("punish.ip-muted", Set.of("player", "reason", "duration", "id", "accounts")),
+            Map.entry("punish.ip-banned", Set.of("player", "reason", "duration", "id", "accounts")),
+            Map.entry("punish.ip-rank", Set.of("player", "count")),
+            Map.entry("punish.ip-unknown", Set.of("player")),
+            Map.entry("admin.import-done-ips", Set.of("ips")),
+            Map.entry("admin.import-ip-disabled", Set.of("count")),
             Map.entry("punish.muted", Set.of("player", "reason", "duration", "id", "offence")),
             Map.entry("unpunish.unwarn-not-found", Set.of("id", "player")),
             Map.entry("target.warn-chat", Set.of("reason", "staff")),
@@ -66,7 +72,6 @@ public final class MessagesLoader {
             Map.entry("notify.login-check-failed", Set.of("reason", "policy")),
             Map.entry("admin.import-done", Set.of("players", "skipped", "unknown")),
             Map.entry("admin.import-cleared", Set.of("count")),
-            Map.entry("admin.import-ip-skipped", Set.of("count")),
             Map.entry("admin.import-failed", Set.of("error-id")),
             Map.entry("admin.reload-warnings", Set.of("count")),
             Map.entry("admin.reload-failed", Set.of("file")),

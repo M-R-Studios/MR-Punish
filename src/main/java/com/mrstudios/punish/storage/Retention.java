@@ -27,7 +27,19 @@ public final class Retention {
 
     /** Deletes what's past its time and returns how many rows went from each table. */
     public Map<String, Integer> run(Connection c, long now) throws SQLException {
+        return run(c, now, 0);
+    }
+
+    /**
+     * @param ipRetentionDays {@code ip.retention-days}: IP links unused for longer are deleted (0 = keep;
+     *                        also 0 while IP features are off, when the links are purged at startup instead)
+     */
+    public Map<String, Integer> run(Connection c, long now, int ipRetentionDays) throws SQLException {
         Map<String, Integer> deleted = new LinkedHashMap<>();
+        if (ipRetentionDays > 0) {
+            deleted.put("player_ips", new IpRepo(database).deleteOlderThan(c,
+                    now - TimeUnit.DAYS.toMillis(ipRetentionDays)));
+        }
         deleted.put("sync_events", delete(c, "DELETE FROM " + database.table("sync_events") + " WHERE at < ?",
                 now - SYNC_EVENTS_MS));
         deleted.put("deliveries", delete(c, "DELETE FROM " + database.table("deliveries")

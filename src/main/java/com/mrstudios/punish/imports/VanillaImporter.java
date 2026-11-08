@@ -36,8 +36,24 @@ public final class VanillaImporter {
     public record Entry(UUID uuid, String name, String reason, String source, long created, Long expires) {
     }
 
-    /** @param imported the UUIDs now in MR-Punish (new and already imported), for {@code --clear} */
-    public record Result(int players, int skipped, int unknown, List<UUID> imported) {
+    /**
+     * One entry of {@code banned-ips.json}, hashed on the main thread: the address never gets here.
+     *
+     * @param hash null if the entry isn't a readable IP
+     */
+    public record IpEntry(String hash, String reason, String source, long created, Long expires) {
+    }
+
+    /** The account an imported IP ban is filed under: vanilla IP bans aren't tied to an account. */
+    public static final UUID NO_ACCOUNT = new UUID(0, 0);
+
+    /**
+     * @param imported         the UUIDs now in MR-Punish (new and already imported), for {@code --clear}
+     * @param ips              IP bans imported now
+     * @param importedIpHashes the hashes now in MR-Punish, for {@code --clear}
+     */
+    public record Result(int players, int skipped, int unknown, List<UUID> imported, int ips,
+            List<String> importedIpHashes) {
     }
 
     private final PunishmentRepo punishments;
@@ -57,6 +73,11 @@ public final class VanillaImporter {
     /** Runs inside one transaction. */
     public Result run(Connection c, List<Entry> entries, String actorName, UUID actorUuid, String server, long now)
             throws SQLException {
+        return run(c, entries, List.of(), actorName, actorUuid, server, now);
+    }
+
+    public Result run(Connection c, List<Entry> entries, List<IpEntry> ipEntries, String actorName, UUID actorUuid,
+            String server, long now) throws SQLException {
         int imported = 0;
         int skipped = 0;
         int unknown = 0;
@@ -88,9 +109,34 @@ public final class VanillaImporter {
             imported++;
             inMrPunish.add(entry.uuid());
         }
+        int ips = 0;
+        List<String> hashesInMrPunish = new ArrayList<>();
+        for (IpEntry entry : ipEntries) {
+            if (entry.hash() == null) {
+                unknown++;
+                continue;
+            }
+            String key = "vanilla:ip:" + entry.hash();
+            if (punishments.importKeyExists(c, key)) {
+                skipped++;
+                hashesInMrPunish.add(entry.hash());
+                continue;
+            }
+            String reason = entry.reason() == null || entry.reason().isBlank() ? DEFAULT_REASON : entry.reason();
+            String source = entry.source() == null || entry.source().isBlank() ? "Server" : entry.source();
+            Long duration = entry.expires() == null ? null : Math.max(0, entry.expires() - entry.created());
+            Punishment ban = new Punishment(0, PunishmentType.IP_BAN, NO_ACCOUNT, "(imported IP ban)", entry.hash(),
+                    REASON_KEY, "Imported: " + MiniMessage.miniMessage().escapeTags(reason), reason, 1, 1, duration,
+                    entry.created(), entry.expires(), null, truncate(source, 32), 0, 0, WeightSource.CACHED, server,
+                    true, Origin.IMPORT_VANILLA, StoredStatus.ACTIVE, null, null, null, null, null, null);
+            long id = punishments.insert(c, ban);
+            punishments.setImportKey(c, id, key);
+            ips++;
+            hashesInMrPunish.add(entry.hash());
+        }
         actions.insert(c, new ActionRepo.Action(now, server, actorUuid, actorName, "IMPORT", null, null, null,
-                "vanilla: imported=" + imported + " skipped=" + skipped + " unreadable=" + unknown));
-        return new Result(imported, skipped, unknown, inMrPunish);
+                "vanilla: imported=" + imported + " ip=" + ips + " skipped=" + skipped + " unreadable=" + unknown));
+        return new Result(imported, skipped, unknown, inMrPunish, ips, hashesInMrPunish);
     }
 
     private static String truncate(String text, int max) {

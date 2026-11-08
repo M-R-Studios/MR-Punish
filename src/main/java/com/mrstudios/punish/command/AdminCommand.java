@@ -41,6 +41,11 @@ public final class AdminCommand {
         /** Whether it's connected, and why not. */
         String storageStatus();
 
+        /** IP features "on", or "off (why)". Never an address. */
+        default String ipStatus() {
+            return "off";
+        }
+
         /** {@code /mrpunish import vanilla [--clear]}: imports vanilla's ban list (DESIGN.md 7.9). */
         void importVanilla(CommandSender sender, boolean clear);
 
@@ -170,6 +175,7 @@ public final class AdminCommand {
                 Placeholder.unparsed("server", admin.serverVersion()),
                 Placeholder.unparsed("storage", admin.storageDescription()),
                 Placeholder.unparsed("storage-status", admin.storageStatus()),
+                Placeholder.unparsed("ip-features", admin.ipStatus()),
                 Placeholder.unparsed("clashes", admin.clashSummary()));
         return Command.SINGLE_SUCCESS;
     }

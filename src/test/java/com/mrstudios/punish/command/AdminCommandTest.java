@@ -143,7 +143,7 @@ class AdminCommandTest {
     void versionShowsPluginServerAndClashes() {
         PlayerMock admin = player(Perms.ADMIN);
         command.version(admin);
-        assertEquals(List.of("MR-Punish » MR-Punish 0.1 on Paper 1.21.11. Storage: SQLite (punishments.db) (connected). Clashes: none"), messages(admin));
+        assertEquals(List.of("MR-Punish » MR-Punish 0.1 on Paper 1.21.11. Storage: SQLite (punishments.db) (connected). IP features: off. Clashes: none"), messages(admin));
         assertNull(admin.nextComponentMessage());
     }
 

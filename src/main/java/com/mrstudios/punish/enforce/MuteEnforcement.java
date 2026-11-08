@@ -48,6 +48,7 @@ public final class MuteEnforcement implements Listener, PunishmentService.Listen
     private final Storage storage;
     private final Supplier<PluginState> state;
     private final MuteCache cache;
+    private final com.mrstudios.punish.ip.IpFeatures ip;
     private final CommandLabelResolver.Lookup commands;
     private final LongSupplier clock;
     private final Logger log;
@@ -55,7 +56,9 @@ public final class MuteEnforcement implements Listener, PunishmentService.Listen
     private final Map<UUID, Long> lastNotice = new ConcurrentHashMap<>();
 
     public MuteEnforcement(Plugin plugin, Storage storage, Supplier<PluginState> state, MuteCache cache,
-            CommandLabelResolver.Lookup commands, LongSupplier clock, Logger log) {
+            com.mrstudios.punish.ip.IpFeatures ip, CommandLabelResolver.Lookup commands, LongSupplier clock,
+            Logger log) {
+        this.ip = ip;
         this.plugin = plugin;
         this.storage = storage;
         this.state = state;
@@ -71,9 +74,23 @@ public final class MuteEnforcement implements Listener, PunishmentService.Listen
 
     // ---- Blocking ----
 
-    /** The player's mute right now, if they're muted. Any thread. */
+    /**
+     * The player's mute right now: their own, or the IP mute of their current connection, whichever
+     * ends later (DESIGN.md 7.8). Any thread.
+     */
     public Optional<Punishment> muteOf(Player player) {
-        return cache.get(player.getUniqueId(), clock.getAsLong());
+        long now = clock.getAsLong();
+        Optional<Punishment> own = cache.get(player.getUniqueId(), now);
+        Optional<Punishment> byIp = ip.enabled()
+                ? cache.getIp(ip.onlineHash(player.getUniqueId()).orElse(null), now) : Optional.empty();
+        if (own.isEmpty()) {
+            return byIp;
+        }
+        if (byIp.isEmpty()) {
+            return own;
+        }
+        return com.mrstudios.punish.punish.ReplacementRules.later(byIp.get().expiresAt(), own.get().expiresAt())
+                ? byIp : own;
     }
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
@@ -210,11 +227,24 @@ public final class MuteEnforcement implements Listener, PunishmentService.Listen
         for (Player player : plugin.getServer().getOnlinePlayers()) {
             UUID uuid = player.getUniqueId();
             long now = clock.getAsLong();
-            storage.executor().submit("loading a mute", c -> new PunishmentRepo(storage.database())
-                    .active(c, PunishmentType.MUTE, new PunishmentRepo.Subject(uuid, null), now).stream()
-                    .reduce((a, b) -> com.mrstudios.punish.punish.ReplacementRules.later(a.expiresAt(), b.expiresAt())
-                            ? a : b))
-                    .thenAccept(mute -> cache.set(uuid, mute));
+            String hash = ip.onlineHash(uuid).orElse(null);
+            storage.executor().submit("loading a mute", c -> {
+                PunishmentRepo repo = new PunishmentRepo(storage.database());
+                java.util.function.BinaryOperator<Punishment> later = (a, b) ->
+                        com.mrstudios.punish.punish.ReplacementRules.later(a.expiresAt(), b.expiresAt()) ? a : b;
+                Optional<Punishment> own = repo.active(c, PunishmentType.MUTE, new PunishmentRepo.Subject(uuid, null), now)
+                        .stream().reduce(later);
+                Optional<Punishment> byIp = hash == null ? Optional.empty() : repo.active(c, PunishmentType.IP_MUTE,
+                        new PunishmentRepo.Subject(null, hash), now).stream().reduce(later);
+                return new Optional<?>[] {own, byIp};
+            }).thenAccept(found -> {
+                @SuppressWarnings("unchecked")
+                Optional<Punishment> own = (Optional<Punishment>) found[0];
+                @SuppressWarnings("unchecked")
+                Optional<Punishment> byIp = (Optional<Punishment>) found[1];
+                cache.set(uuid, own);
+                cache.setIp(hash, byIp);
+            });
         }
     }
 
@@ -226,11 +256,16 @@ public final class MuteEnforcement implements Listener, PunishmentService.Listen
         Player online = plugin.getServer().getPlayer(p.targetUuid());
         Messages m = snapshot.messages();
         Settings settings = snapshot.settings();
-        if (p.type() == PunishmentType.MUTE) {
+        if (p.type() == PunishmentType.MUTE || p.type() == PunishmentType.IP_MUTE) {
             cache.forget(committed.replaced());
             cache.put(p);
-            if (online != null) {
-                m.sendLines(online, "target.mute-chat", Placeholder.parsed("reason", p.reasonDisplay()),
+            List<UUID> told = p.type() == PunishmentType.IP_MUTE ? ip.onlineOn(p.ipHash()) : List.of(p.targetUuid());
+            for (UUID uuid : told) {
+                Player muted = plugin.getServer().getPlayer(uuid);
+                if (muted == null) {
+                    continue;
+                }
+                m.sendLines(muted, "target.mute-chat", Placeholder.parsed("reason", p.reasonDisplay()),
                         Placeholder.unparsed("staff", p.issuerName()),
                         Placeholder.unparsed("duration", p.durationMs() == null ? m.raw("general.permanent")
                                 : DurationParser.format(p.durationMs())),
@@ -258,14 +293,23 @@ public final class MuteEnforcement implements Listener, PunishmentService.Listen
 
     @Override
     public void removed(PluginState snapshot, Requests.Remove request, Requests.RemoveResult.Removed removed) {
-        if (request.type() != PunishmentType.MUTE) {
+        if (request.type() != PunishmentType.MUTE && request.type() != PunishmentType.IP_MUTE) {
             return;
         }
         List<Long> ids = removed.removed().stream().map(Punishment::id).toList();
         cache.forget(ids);
-        Player online = plugin.getServer().getPlayer(request.target().uuid());
-        if (online != null && cache.get(online.getUniqueId(), clock.getAsLong()).isEmpty()) {
-            snapshot.messages().send(online, "target.unmuted");
+        java.util.Set<UUID> affected = new java.util.LinkedHashSet<>();
+        affected.add(request.target().uuid());
+        for (Punishment p : removed.removed()) {
+            if (p.ipHash() != null) {
+                affected.addAll(ip.onlineOn(p.ipHash()));
+            }
+        }
+        for (UUID uuid : affected) {
+            Player online = plugin.getServer().getPlayer(uuid);
+            if (online != null && muteOf(online).isEmpty()) {
+                snapshot.messages().send(online, "target.unmuted");
+            }
         }
         if (log.isLoggable(java.util.logging.Level.FINE)) {
             log.fine("Unmuted " + request.target().name() + ": " + ids);

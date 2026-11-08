@@ -16,6 +16,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class MuteCache {
 
     private final Map<UUID, Punishment> mutes = new ConcurrentHashMap<>();
+    /** Active IP mutes by IP hash (DESIGN.md 8.4: every account on the hash sees it at once). */
+    private final Map<String, Punishment> ipMutes = new ConcurrentHashMap<>();
 
     /** What the database said for {@code uuid}: its active mute, or none. */
     public void set(UUID uuid, Optional<Punishment> mute) {
@@ -26,8 +28,27 @@ public final class MuteCache {
         }
     }
 
-    /** Adds a committed mute; the one that ends later stays. */
+    /** What the database said for {@code hash}: its active IP mute, or none. */
+    public void setIp(String hash, Optional<Punishment> mute) {
+        if (hash == null) {
+            return;
+        }
+        if (mute.isPresent()) {
+            ipMutes.put(hash, mute.get());
+        } else {
+            ipMutes.remove(hash);
+        }
+    }
+
+    /** Adds a committed mute (an IP mute by its hash); the one that ends later stays. */
     public void put(Punishment mute) {
+        if (mute.type().isIp()) {
+            if (mute.ipHash() != null) {
+                ipMutes.merge(mute.ipHash(), mute,
+                        (old, added) -> ReplacementRules.later(old.expiresAt(), added.expiresAt()) ? old : added);
+            }
+            return;
+        }
         mutes.merge(mute.targetUuid(), mute,
                 (old, added) -> ReplacementRules.later(old.expiresAt(), added.expiresAt()) ? old : added);
     }
@@ -35,10 +56,27 @@ public final class MuteCache {
     /** Forgets the mutes with these ids (removed or replaced). */
     public void forget(Collection<Long> ids) {
         mutes.values().removeIf(p -> ids.contains(p.id()));
+        ipMutes.values().removeIf(p -> ids.contains(p.id()));
     }
 
     public void forget(UUID uuid) {
         mutes.remove(uuid);
+    }
+
+    /** The active IP mute on {@code hash} at {@code now}, if any. */
+    public Optional<Punishment> getIp(String hash, long now) {
+        if (hash == null) {
+            return Optional.empty();
+        }
+        Punishment mute = ipMutes.get(hash);
+        if (mute == null) {
+            return Optional.empty();
+        }
+        if (!mute.isActive(now)) {
+            ipMutes.remove(hash, mute);
+            return Optional.empty();
+        }
+        return Optional.of(mute);
     }
 
     /** The player's active mute at {@code now}, if any. */

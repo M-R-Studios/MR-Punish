@@ -27,12 +27,13 @@ import org.bukkit.NamespacedKey;
  * @param warnTitle     also show a warned player a title
  * @param mute          what a muted player can't do
  * @param warnedSound   played to the warned player
+ * @param ip            IP punishments and tracking
  */
 public record Settings(TimeSpan historyPeriod, ReasonRegistry reasons, Map<String, CommandToggle> commands,
         Storage storage, String serverName, TimeSpan warningActiveFor, Map<PunishmentType, Boolean> announcements,
         boolean luckperms, SoundSetting notifySound, Display display, Login login, boolean banKickOnline,
         int maxTextLength, SoundSetting punishedSound, SoundSetting failedSound, boolean warnTitle, Mute mute,
-        SoundSetting warnedSound) {
+        SoundSetting warnedSound, Ip ip) {
 
     public Settings {
         commands = Map.copyOf(commands);
@@ -67,6 +68,16 @@ public record Settings(TimeSpan historyPeriod, ReasonRegistry reasons, Map<Strin
         public Mute {
             blockedCommands = java.util.Set.copyOf(blockedCommands);
         }
+    }
+
+    /**
+     * {@code ip.*}.
+     *
+     * @param enabled          read at startup (changing it needs a restart)
+     * @param retentionDays    0 = keep the links forever
+     */
+    public record Ip(boolean enabled, int associationDays, int retentionDays, int ipv6Prefix,
+            boolean purgeWhenDisabled) {
     }
 
     public enum FailPolicy {

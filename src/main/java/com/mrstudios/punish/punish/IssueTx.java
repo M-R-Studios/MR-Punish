@@ -27,7 +27,11 @@ import java.util.Optional;
 final class IssueTx {
 
     /** Settings read once when the action started, so a reload can't change them halfway. */
-    record Context(TimeSpan historyPeriod, TimeSpan warningActiveFor, String server) {
+    record Context(TimeSpan historyPeriod, TimeSpan warningActiveFor, String server, long associationSince) {
+
+        Context(TimeSpan historyPeriod, TimeSpan warningActiveFor, String server) {
+            this(historyPeriod, warningActiveFor, server, Long.MAX_VALUE);
+        }
     }
 
     private final Database database;
@@ -81,6 +85,22 @@ final class IssueTx {
         List<Standing> affected = new ArrayList<>();
         affected.add(standing);
         affected.addAll(target.affected());
+        if (type.isIp()) {
+            // The associated accounts as the database says now (DESIGN.md 7.10 step 4.2): someone promoted
+            // or newly seen on the IP since the command started is still protected. The higher weight wins.
+            java.util.Map<java.util.UUID, Standing> byUuid = new java.util.LinkedHashMap<>();
+            for (Standing s : affected) {
+                byUuid.put(s.uuid(), s);
+            }
+            for (com.mrstudios.punish.storage.IpRepo.Seen seen : new com.mrstudios.punish.storage.IpRepo(database)
+                    .associated(c, target.ipHash(), context.associationSince())) {
+                Standing known = byUuid.get(seen.uuid());
+                Standing cached = new Standing(seen.uuid(), seen.name(), seen.weight(), seen.exempt());
+                byUuid.put(seen.uuid(), known == null ? cached : new Standing(known.uuid(), known.name(),
+                        Math.max(known.weight(), seen.weight()), known.exempt() || seen.exempt()));
+            }
+            affected = new ArrayList<>(byUuid.values());
+        }
         Authority.Action action = type.isIp() ? Authority.Action.IP_PUNISH : Authority.Action.PUNISH;
         Authority.Verdict verdict = Authority.check(actor, affected, action);
         if (verdict != Authority.Verdict.OK) {

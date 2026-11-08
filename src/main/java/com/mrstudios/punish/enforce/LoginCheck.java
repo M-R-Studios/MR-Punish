@@ -33,19 +33,21 @@ public final class LoginCheck {
      * @param ok   false if the lookup failed or timed out
      * @param ban  the active ban it found (only when {@code ok})
      * @param mute the active mute it found, for the mute cache (only when {@code ok})
+     * @param ipMute the active IP mute on the joining connection's hash (only when {@code ok})
      */
-    public record Lookup(boolean ok, Optional<Punishment> ban, Optional<Punishment> mute) {
+    public record Lookup(boolean ok, Optional<Punishment> ban, Optional<Punishment> mute,
+            Optional<Punishment> ipMute) {
 
         public static Lookup failed() {
-            return new Lookup(false, Optional.empty(), Optional.empty());
+            return new Lookup(false, Optional.empty(), Optional.empty(), Optional.empty());
         }
 
         public static Lookup of(Optional<Punishment> ban) {
-            return new Lookup(true, ban, Optional.empty());
+            return new Lookup(true, ban, Optional.empty(), Optional.empty());
         }
 
-        public static Lookup of(Optional<Punishment> ban, Optional<Punishment> mute) {
-            return new Lookup(true, ban, mute);
+        public static Lookup of(Optional<Punishment> ban, Optional<Punishment> mute, Optional<Punishment> ipMute) {
+            return new Lookup(true, ban, mute, ipMute);
         }
     }
 
@@ -53,6 +55,15 @@ public final class LoginCheck {
     }
 
     public static Decision decide(UUID uuid, Lookup lookup, FailPolicy policy, BanCache cache, long now) {
+        return decide(uuid, null, lookup, policy, cache, now);
+    }
+
+    /**
+     * @param ipHash the joining connection's hash, or null when IP features are off; under CACHE an
+     *               IP ban in the copy denies the login too
+     */
+    public static Decision decide(UUID uuid, String ipHash, Lookup lookup, FailPolicy policy, BanCache cache,
+            long now) {
         if (lookup.ok()) {
             return lookup.ban().map(b -> new Decision(Outcome.DENY_BANNED, b))
                     .orElse(new Decision(Outcome.ALLOW, null));
@@ -62,7 +73,8 @@ public final class LoginCheck {
                 if (!cache.loaded()) {
                     yield new Decision(Outcome.DENY_UNVERIFIED, null);
                 }
-                yield cache.get(uuid, now).map(b -> new Decision(Outcome.DENY_BANNED, b))
+                yield cache.get(uuid, now).or(() -> cache.getIp(ipHash, now))
+                        .map(b -> new Decision(Outcome.DENY_BANNED, b))
                         .orElse(new Decision(Outcome.ALLOW_UNVERIFIED, null));
             }
             case DENY -> new Decision(Outcome.DENY_UNVERIFIED, null);

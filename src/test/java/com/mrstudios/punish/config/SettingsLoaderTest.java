@@ -15,7 +15,8 @@ class SettingsLoaderTest {
 
     /** Any material is an item except names starting with NOT_. */
     /** The commands the plugin ships that config.yml can switch. */
-    static final List<String> SHIPPED_COMMANDS = List.of("ban", "unban", "warn", "unwarn", "mute", "unmute");
+    static final List<String> SHIPPED_COMMANDS = List.of("ban", "unban", "warn", "unwarn", "mute", "unmute", "muteip",
+            "banip", "unmuteip", "unbanip");
 
     private static SettingsLoader loader() {
         return loader(SHIPPED_COMMANDS);

@@ -283,6 +283,24 @@ ban:
   # Kick the banned player straight away if they're online. The ban always blocks joining.
   kick-online: true
 
+ip:
+  # Turn IP punishments (/muteip, /banip, /unmuteip, /unbanip) and IP tracking on. Changing this needs a restart.
+  # When off, no IP information is stored at all, and the IP commands say they're disabled.
+  # IPs are never stored as plain text, only as a keyed hash (the secret is in ip-secret.key: back it up,
+  # a lost key can't be recovered). On a network sharing MySQL, copy the same ip-secret.key to every server.
+  enabled: false
+  # Accounts seen on the same IP within this many days count as "associated". Their rank is checked
+  # before an IP punishment, and they're counted in staff messages. Range 1-365.
+  association-days: 30
+  # Delete an account's link to an IP after this many days without a login from it. 0 = keep forever.
+  # The IP hash inside an IP punishment is kept as long as the punishment record exists.
+  retention-days: 90
+  # IPv6 addresses are grouped by this prefix length before hashing (a home connection usually owns a
+  # whole /64). Range 32-128.
+  ipv6-prefix: 64
+  # When ip.enabled is false, delete stored IP links at startup.
+  purge-when-disabled: true
+
 login:
   # What to do when a joining player's punishments can't be checked (database down or too slow).
   # CACHE: use the in-memory copy of active bans. A player banned in the copy is denied. Others are
@@ -312,6 +330,10 @@ commands:
   unwarn: { enabled: true, aliases: [] }
   mute:   { enabled: true, aliases: [] }
   unmute: { enabled: true, aliases: [] }
+  muteip:   { enabled: true, aliases: [ipmute] }
+  banip:    { enabled: true, aliases: [ipban] }
+  unmuteip: { enabled: true, aliases: [ipunmute] }
+  unbanip:  { enabled: true, aliases: [ipunban] }
 
 storage:
   # SQLITE (a file in plugins/MR-Punish/) or MYSQL (also MariaDB). Changing this needs a restart.

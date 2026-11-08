@@ -16,6 +16,8 @@ softdepend: [LuckPerms]
 #   unwarn <player> [id] [reason...]
 #   mute <player> [-s] <reason> [note...]
 #   unmute <player> [reason...]
+#   muteip (alias ipmute), banip (alias ipban) <player> [-s] <reason> [note...]
+#   unmuteip (alias ipunmute), unbanip (alias ipunban) <player> [reason...]
 permissions:
   # Rank nodes. What each rank grants is set in plugins/MR-Punish/permissions.yml.
   mrpunish.helper:

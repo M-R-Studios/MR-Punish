@@ -42,7 +42,7 @@ public final class SettingsLoader {
 
     private static final Set<String> TOP_LEVEL = Set.of("config-version", "escalation", "fallback-reasons", "reasons",
             "commands", "storage", "server-name", "warnings", "announcements", "hooks", "sounds", "date-format",
-            "time-zone", "appeal-link", "ban", "login", "input", "mute");
+            "time-zone", "appeal-link", "ban", "login", "input", "mute", "ip");
     private static final Set<String> REASON_FIELDS = Set.of("type", "display", "description", "icon", "slot", "aliases",
             "escalation", "history-period", "permission", "enabled");
     private static final Set<String> TOGGLE_FIELDS = Set.of("enabled", "aliases");
@@ -228,6 +228,11 @@ public final class SettingsLoader {
                 warnings.add("mute.blocked-commands: '" + command + "' is not a command name, skipped");
             }
         }
+        Settings.Ip ip = new Settings.Ip(r.bool("ip.enabled", false), r.wholeNumber("ip.association-days", 1, 365, 30),
+                r.wholeNumber("ip.retention-days", 0, 36_500, 90), r.wholeNumber("ip.ipv6-prefix", 32, 128, 64),
+                r.bool("ip.purge-when-disabled", true));
+        warnUnknownIn(yaml, "ip", Set.of("enabled", "association-days", "retention-days", "ipv6-prefix",
+                "purge-when-disabled"), warnings);
         Settings.Mute mute = new Settings.Mute(blocked, r.bool("mute.block-signs", true),
                 r.bool("mute.block-books", true), r.wholeNumber("mute.notify-cooldown-seconds", 0, 3600, 3));
         warnUnknownIn(yaml, "mute", Set.of("blocked-commands", "block-signs", "block-books",
@@ -236,7 +241,7 @@ public final class SettingsLoader {
 
         return LoadResult.loaded(new Settings(historyPeriod, registry, commands, storage, serverName, activeFor,
                 announcements, luckperms, notify, display, login, kickOnline, maxText, punished, failed, warnTitle,
-                mute, warned), warnings);
+                mute, warned, ip), warnings);
     }
 
     private Settings.SoundSetting sound(YamlReader r, String section, Settings.SoundSetting def) {
