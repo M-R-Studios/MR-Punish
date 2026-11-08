@@ -35,7 +35,8 @@ public record Settings(TimeSpan historyPeriod, ReasonRegistry reasons, Map<Strin
         Storage storage, String serverName, TimeSpan warningActiveFor, Map<PunishmentType, Boolean> announcements,
         boolean luckperms, SoundSetting notifySound, Display display, Login login, boolean banKickOnline,
         int maxTextLength, SoundSetting punishedSound, SoundSetting failedSound, boolean warnTitle, Mute mute,
-        SoundSetting warnedSound, Ip ip, Input input, boolean floodgate, Reports reports) {
+        SoundSetting warnedSound, Ip ip, Input input, boolean floodgate, Reports reports,
+        Vanish vanish, StaffChat staffChat) {
 
     public Settings {
         commands = Map.copyOf(commands);
@@ -166,5 +167,14 @@ public record Settings(TimeSpan historyPeriod, ReasonRegistry reasons, Map<Strin
 
     /** One configured report reason. @param display MiniMessage */
     public record ReportReason(String key, String display, String icon) {
+    }
+
+    /** {@code vanish.*} (DESIGN.md 11.2). @param reminderSeconds 0 = no action-bar reminder */
+    public record Vanish(boolean persist, boolean hideFromServerList, boolean blockPickup, boolean blockPhysical,
+            boolean noMobTargeting, int reminderSeconds) {
+    }
+
+    /** {@code staff-chat.*} (DESIGN.md 11.5). @param prefix "" = no prefix routing */
+    public record StaffChat(String prefix, SoundSetting sound) {
     }
 }

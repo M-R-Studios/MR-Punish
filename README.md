@@ -62,6 +62,18 @@ Any player can `/report <player> [reason...]`. Without a reason a menu offers th
 
 Staff with `mrpunish.reports` are told about each new report (click to open `/reports`) and reminded of open reports every `reports.reminder-minutes`. `/reports [open|claimed|mine|closed|all]` lists them, oldest open first. A report's details let staff claim it (others then can't decide it, except admins, which is logged), resolve or reject it with an optional note, add internal notes, and open the player's punish menu or history. A claim is released after `reports.claim-timeout-minutes` without a decision. The reporter is told the outcome at once, or on their next join. If two staff act on the same report at once, only the first change counts; the other is told it changed and sees the latest version. Reports and notes are never deleted.
 
+## Staff chat and /stafflist
+
+`/sc <message>` sends one message to staff chat (`mrpunish.staffchat`, console too); `/staffchat` sends all your chat there until you run it again or leave; a chat line starting with `staff-chat.prefix` (`#`) goes there too, for staff only (other players typing `#` chat normally). Staff chat reaches only online players with `mrpunish.staffchat` and the console, and typed text is shown as text. It works for a muted staff member. If you lose the permission while staff chat is toggled on, your next line is refused instead of going to public chat.
+
+`/stafflist` (everyone) lists the online staff by rank. Vanished staff appear only to those who can see them, marked [vanished].
+
+## Vanish
+
+`/vanish` (`mrpunish.vanish`) hides you from players without `mrpunish.vanish.see` and from staff of a lower rank; staff of your rank or higher still see you. `/vanish <player>` needs `mrpunish.vanish.others` and a higher rank, and only works on players who could make themselves visible again. While vanished there's no join or quit message (staff who can see you are told instead), you're left out of the server list and its player count, you can't pick up items or arrows, don't trigger pressure plates or tripwires, mobs ignore you and sleeping skips you; the action bar reminds you every `vanish.reminder-seconds`. MR-Punish sets the `vanished` metadata that EssentialsX, TAB and others read; if you use EssentialsX, use one vanish system, not both.
+
+With `vanish.persist` you stay vanished across a relog or restart. Nobody can get stuck invisible: hiding isn't saved by the server, losing `mrpunish.vanish` makes you visible again (at once, or at your next join), and when MR-Punish is disabled everyone is shown again (enabling it vanishes those players again).
+
 ## Bans
 
 `/ban <player> [-s] <reason> [note...]` bans with the reason's next escalation step from `config.yml`: the first word picks a ban reason by its key or one of its aliases, and the rest is a staff note. If the first word isn't a ban reason, the "other" ban reason is used and the whole text becomes the note. `-s` (anywhere after the name) skips the public announcement; staff are still notified. A new ban can never end sooner than an active one (remove it first to shorten it), and history is never deleted: replaced and removed bans stay visible with who, when and why. `/unban` removes every active ban of the player.
@@ -96,6 +108,10 @@ To give a label back to vanilla or another plugin, turn it off in `config.yml` (
 | `/history <player> [page]` (alias `/hist`) | `mrpunish.history` | The history menu; console gets a text list. Removing needs `mrpunish.remove`. |
 | `/report <player> [reason...]` | `mrpunish.report` (everyone) | Reports a player; without a reason, opens the reason menu. Players only. |
 | `/reports [open\|claimed\|mine\|closed\|all]` | `mrpunish.reports` | The reports menu. Players only. |
+| `/sc <message>` | `mrpunish.staffchat` | One message to staff chat. Console can use it. |
+| `/staffchat` | `mrpunish.staffchat` | Sends all your chat to staff chat, or back. |
+| `/stafflist` | `mrpunish.stafflist` (everyone) | Online staff with rank. |
+| `/vanish [player]` (alias `/v`) | `mrpunish.vanish`; another player: `mrpunish.vanish.others` and a higher rank | Toggles vanish. |
 | `/ban <player> [-s] <reason> [note...]` | `mrpunish.ban` | Bans with the reason's next escalation step. From a player: opens the confirmation (no reason: the reason menu). Works from console. |
 | `/unban <player> [reason...]` | `mrpunish.remove` | Removes every active ban of the player, recording the reason. |
 | `/mute <player> [-s] <reason> [note...]` | `mrpunish.mute` | Mutes with the reason's next escalation step. From a player: opens the confirmation (no reason: the reason menu). |

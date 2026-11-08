@@ -13,6 +13,7 @@ softdepend: [LuckPerms, floodgate]
 #   punish (alias p) <player>: the punish menu (players only)
 #   history (alias hist) <player> [page]: the history menu (console: a text list)
 #   report <player> [reason...]; reports [open|claimed|mine|closed|all] (players only)
+#   sc <message>; staffchat; stafflist; vanish (alias v) [player]
 #   ban <player> [-s] <reason> [note...]
 #   unban <player> [reason...]
 #   warn <player> [-s] <reason> [note...]

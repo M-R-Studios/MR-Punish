@@ -35,5 +35,9 @@
 - `/report <player> [reason...]` with a reason menu (configured reasons and a typed "Other"), a cooldown, duplicate protection and a cap on open reports per player.
 - `/reports` for staff: a list with filters, and a detail view to claim, unclaim, resolve or reject (with a note), add notes, and open the player's punish menu or history. Claims expire; staff are reminded of open reports; the reporter is told the outcome now or on their next join. Two staff acting on the same report can't both change it.
 
+- Staff chat: `/sc`, the `/staffchat` toggle and the `#` prefix. Only staff and the console see it; it works for muted staff.
+- `/stafflist`: online staff by rank; vanished staff only for those who can see them.
+- `/vanish [player]`: hidden from players and lower-ranked staff, kept across relogs and restarts (`vanish.persist`), no join or quit messages, left out of the server list, no item pickup, pressure plates or mob targeting, an action-bar reminder, and the `vanished` metadata for other plugins. Nobody stays hidden when MR-Punish is disabled or when they lose the permission.
+
 ### Changed
 - `/mute` and `/ban` (and `/muteip`, `/banip`) from a player now open the confirmation menu instead of applying straight away; without a reason, `/warn`, `/mute` and `/ban` open the reason menu. Console is unchanged.

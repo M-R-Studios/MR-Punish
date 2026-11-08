@@ -94,15 +94,16 @@ public final class MuteEnforcement implements Listener, PunishmentService.Listen
     }
 
     /** Staff typing into a menu prompt: their chat line is input, not chat (DESIGN.md 12.2). */
-    private volatile java.util.function.Predicate<java.util.UUID> typingInput = uuid -> false;
+    private volatile java.util.function.Predicate<AsyncChatEvent> notChat = event -> false;
 
-    public void skipChatWhile(java.util.function.Predicate<java.util.UUID> typing) {
-        this.typingInput = typing;
+    /** Chat lines that aren't public chat (prompt input, staff chat): mute enforcement leaves them alone. */
+    public void skipChatWhen(java.util.function.Predicate<AsyncChatEvent> notChat) {
+        this.notChat = notChat;
     }
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onChat(AsyncChatEvent event) {
-        if (typingInput.test(event.getPlayer().getUniqueId())) {
+        if (notChat.test(event)) {
             return;
         }
         Optional<Punishment> mute = muteOf(event.getPlayer());

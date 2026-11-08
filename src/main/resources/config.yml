@@ -343,6 +343,24 @@ reports:
     harassment: { display: "Harassment", icon: IRON_SWORD }
     griefing: { display: "Griefing", icon: FLINT_AND_STEEL }
 
+vanish:
+  # Keep players vanished across logout and restart.
+  persist: true
+  # Hide vanished players from the server list sample and player count.
+  hide-from-server-list: true
+  # Vanished players can't pick up items or arrows.
+  block-pickup: true
+  # Vanished players don't trigger pressure plates, tripwires or farmland.
+  block-physical: true
+  # Mobs ignore vanished players.
+  no-mob-targeting: true
+  # Remind vanished players on the action bar every N seconds. 0 = never.
+  reminder-seconds: 30
+
+staff-chat:
+  # Messages starting with this go to staff chat (for players with mrpunish.staffchat). "" = off.
+  prefix: "#"
+
 bedrock:
   # Use Floodgate (if installed) to show Bedrock players a form for typing text instead of chat.
   # Changing this needs a restart.
@@ -358,6 +376,10 @@ commands:
   history: { enabled: true, aliases: [hist] }
   report: { enabled: true, aliases: [] }
   reports: { enabled: true, aliases: [] }
+  staffchat: { enabled: true, aliases: [] }
+  sc: { enabled: true, aliases: [] }
+  stafflist: { enabled: true, aliases: [] }
+  vanish: { enabled: true, aliases: [v] }
   ban:   { enabled: true, aliases: [] }
   unban: { enabled: true, aliases: [] }
   warn:   { enabled: true, aliases: [] }
@@ -412,3 +434,5 @@ sounds:
   warned: { enabled: true, sound: minecraft:block.note_block.bass, volume: 1.0, pitch: 0.6 }
   # Played to staff (mrpunish.reports) when a report comes in.
   report: { enabled: true, sound: minecraft:block.note_block.chime, volume: 0.8, pitch: 1.2 }
+  # Played to staff on a staff chat message.
+  staff-chat: { enabled: true, sound: minecraft:entity.item.pickup, volume: 0.4, pitch: 1.6 }

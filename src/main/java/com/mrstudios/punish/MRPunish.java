@@ -26,6 +26,9 @@ import com.mrstudios.punish.command.PunishCommand;
 import com.mrstudios.punish.command.HistoryCommand;
 import com.mrstudios.punish.command.ReportCommand;
 import com.mrstudios.punish.command.ReportsCommand;
+import com.mrstudios.punish.command.StaffCommands;
+import com.mrstudios.punish.staff.StaffChat;
+import com.mrstudios.punish.staff.VanishService;
 import com.mrstudios.punish.command.PunishMenuCommand;
 import com.mrstudios.punish.gui.BedrockForms;
 import com.mrstudios.punish.gui.DisplayGuard;
@@ -105,6 +108,8 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
     private BanEnforcement bans;
     private MuteEnforcement mutes;
     private PromptService prompts;
+    private StaffChat staffChat;
+    private VanishService vanish;
     private PunishMenus menus;
     private HistoryMenus history;
     private ReportService reports;
@@ -130,11 +135,13 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
     @Override
     public void onEnable() {
         // Commands that config.yml can switch off. Later steps add theirs.
-        List<CommandRegistry.Switchable> switchable = List.of(PunishCommand.ban(this), RemoveCommand.unban(this),
+        List<CommandRegistry.Switchable> switchable = new java.util.ArrayList<>(List.of(PunishCommand.ban(this),
+                RemoveCommand.unban(this),
                 PunishCommand.warn(this), RemoveCommand.unwarn(this), PunishCommand.mute(this),
                 RemoveCommand.unmute(this), PunishCommand.muteip(this), PunishCommand.banip(this),
                 RemoveCommand.unmuteip(this), RemoveCommand.unbanip(this), new PunishMenuCommand(this),
-                new HistoryCommand(this), new ReportCommand(this), new ReportsCommand(this));
+                new HistoryCommand(this), new ReportCommand(this), new ReportsCommand(this)));
+        switchable.addAll(new StaffCommands(this).all());
         Set<String> reserved = new HashSet<>(AdminCommand.ALIASES);
         reserved.add(AdminCommand.LABEL);
 
@@ -425,7 +432,14 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
         Items items = new Items();
         prompts = new PromptService(this, () -> state, forms);
         getServer().getPluginManager().registerEvents(prompts, this);
-        mutes.skipChatWhile(prompts::waiting);
+        staffChat = new StaffChat(this, () -> state, prompts::waiting);
+        getServer().getPluginManager().registerEvents(staffChat, this);
+        // Prompt input and staff chat aren't public chat, so a mute doesn't block them (DESIGN.md X20).
+        mutes.skipChatWhen(event -> prompts.waiting(event.getPlayer().getUniqueId()) || staffChat.claims(event));
+        vanish = new VanishService(this, () -> state, rankCache);
+        getServer().getPluginManager().registerEvents(vanish, this);
+        vanish.enableOnline();
+        getServer().getScheduler().runTaskTimer(this, vanish::tick, 20L, 20L);
         getServer().getPluginManager().registerEvents(new MenuListener(this), this);
         getServer().getPluginManager().registerEvents(new DisplayGuard(items, getLogger()), this);
         menus = new PunishMenus(this, items, prompts);
@@ -457,6 +471,14 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
         return menus;
     }
 
+    public StaffChat staffChat() {
+        return staffChat;
+    }
+
+    public VanishService vanish() {
+        return vanish;
+    }
+
     public PromptService prompts() {
         return prompts;
     }
@@ -465,6 +487,10 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
     public void onDisable() {
         if (prompts != null) {
             prompts.dropAll();
+        }
+        // Nobody stays hidden while MR-Punish is off; vanish itself stays in the PDC (DESIGN.md 11.2).
+        if (vanish != null) {
+            vanish.disable();
         }
         // Nobody keeps a menu of a disabled plugin open.
         for (Player player : getServer().getOnlinePlayers()) {
@@ -531,6 +557,10 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
             if (rankCache.refresh(player)) {
                 tracker.record(player);
             }
+        }
+        // Rank or permission changes change who sees which vanished player (DESIGN.md 11.2).
+        if (vanish != null) {
+            vanish.refreshAll();
         }
     }
 
@@ -624,6 +654,8 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
         if (loaded.ranks().ok()) {
             ranks.apply(updated.ranks());
             refreshRanks();
+        } else if (vanish != null) {
+            vanish.refreshAll();
         }
         List<String> restartNeeded = new ArrayList<>();
         if (loaded.settings().ok() && commands.needsRestart(updated.settings())) {

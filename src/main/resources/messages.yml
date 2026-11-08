@@ -122,6 +122,35 @@ reports:
     RESOLVED: "<green>Resolved"
     REJECTED: "<gray>Rejected"
 
+# Staff chat, /stafflist and vanish.
+staff:
+  # <rank>: the sender's rank display. <message> is shown as typed (no formatting).
+  staffchat-format: "<dark_gray>[<aqua>Staff<dark_gray>] <rank> <white><player></white><dark_gray>: <aqua><message>"
+  staffchat-on: "<prefix><green>Your chat now goes to staff chat."
+  staffchat-off: "<prefix><gray>Your chat goes to everyone again."
+  stafflist-header: "<prefix><white>Online staff (<count>):"
+  stafflist-line: "<gray>- <rank> <white><player></white><tags>"
+  stafflist-tag-vanished: " <dark_gray>[vanished]"
+  stafflist-none: "<prefix><gray>No staff online."
+  vanish-on: "<prefix><green>You are now vanished."
+  vanish-off: "<prefix><gray>You are visible again."
+  vanish-other-on: "<prefix><green><player> is now vanished."
+  vanish-other-off: "<prefix><gray><player> is visible again."
+  # Told to a player another staff member vanished or unvanished.
+  vanish-by-other-on: "<prefix><green><staff> vanished you."
+  vanish-by-other-off: "<prefix><gray><staff> made you visible again."
+  vanish-rank: "<prefix><red>You can't vanish <player>: their rank is equal to or higher than yours."
+  # Only players who could make themselves visible again (mrpunish.vanish) can be vanished by others.
+  vanish-target-cant: "<prefix><red><player> doesn't have permission to vanish, so they can't be vanished."
+  # Joined still vanished (vanish.persist), and when vanish was lifted because you lost mrpunish.vanish.
+  vanish-still: "<prefix><gray>You are still vanished."
+  vanish-lost-permission: "<prefix><yellow>You were made visible: you no longer have permission to vanish."
+  # On the action bar every vanish.reminder-seconds.
+  vanish-reminder: "<gray>You are vanished"
+  # To staff who can see the vanished player, instead of the public join and quit messages.
+  vanish-joined: "<dark_gray>[<aqua>Staff<dark_gray>] <gray><player> joined (vanished)"
+  vanish-left: "<dark_gray>[<aqua>Staff<dark_gray>] <gray><player> left (vanished)"
+
 # Sent to the punished player
 target:
   # Sent to a warned player who is online (lines), plus a title if warnings.title is true.
