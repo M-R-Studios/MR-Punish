@@ -289,6 +289,30 @@ class PluginStaffTest {
     }
 
     @Test
+    void aReloadWhilePermissionsAreStillLoadingDoesntDropTheVanish() {
+        commands.vanishSelf(mod);
+        plugin.vanish().disable();
+        // After a /reload the permissions plugin may not have loaded online players yet.
+        mod.removeAttachment(modRank);
+        mod.recalculatePermissions();
+        plugin.vanish().enableOnline();
+        plugin.vanish().refreshVisibility();
+        assertTrue(plugin.vanish().isVanished(mod.getUniqueId()), "still vanished");
+        assertFalse(steve.canSee(mod));
+        assertTrue(mod.getPersistentDataContainer().has(KEY, PersistentDataType.BYTE));
+        // Permissions loaded again: stays vanished on the rank refresh.
+        modRank = mod.addAttachment(plugin, "mrpunish.mod", true);
+        plugin.vanish().refreshAll();
+        assertTrue(plugin.vanish().isVanished(mod.getUniqueId()));
+        // Really lost: the rank refresh makes them visible.
+        mod.removeAttachment(modRank);
+        mod.recalculatePermissions();
+        plugin.vanish().refreshAll();
+        assertFalse(plugin.vanish().isVanished(mod.getUniqueId()));
+        assertTrue(steve.canSee(mod));
+    }
+
+    @Test
     void vanishedPlayersCantPickUpTriggerOrBeTargeted() {
         commands.vanishSelf(mod);
         Location at = mod.getLocation();

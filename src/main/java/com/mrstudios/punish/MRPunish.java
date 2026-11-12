@@ -26,7 +26,10 @@ import com.mrstudios.punish.command.PunishCommand;
 import com.mrstudios.punish.command.HistoryCommand;
 import com.mrstudios.punish.command.ReportCommand;
 import com.mrstudios.punish.command.ReportsCommand;
+import com.mrstudios.punish.command.FreezeCommands;
 import com.mrstudios.punish.command.StaffCommands;
+import com.mrstudios.punish.gui.InspectMenus;
+import com.mrstudios.punish.staff.FreezeService;
 import com.mrstudios.punish.staff.StaffChat;
 import com.mrstudios.punish.staff.VanishService;
 import com.mrstudios.punish.command.PunishMenuCommand;
@@ -110,6 +113,8 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
     private PromptService prompts;
     private StaffChat staffChat;
     private VanishService vanish;
+    private FreezeService freeze;
+    private InspectMenus inspect;
     private PunishMenus menus;
     private HistoryMenus history;
     private ReportService reports;
@@ -142,6 +147,7 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
                 RemoveCommand.unmuteip(this), RemoveCommand.unbanip(this), new PunishMenuCommand(this),
                 new HistoryCommand(this), new ReportCommand(this), new ReportsCommand(this)));
         switchable.addAll(new StaffCommands(this).all());
+        switchable.addAll(new FreezeCommands(this).all());
         Set<String> reserved = new HashSet<>(AdminCommand.ALIASES);
         reserved.add(AdminCommand.LABEL);
 
@@ -439,7 +445,17 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
         vanish = new VanishService(this, () -> state, rankCache);
         getServer().getPluginManager().registerEvents(vanish, this);
         vanish.enableOnline();
+        // Again once every plugin has enabled (after a /reload): another plugin enabling after us
+        // (EssentialsX does) may show everyone to everyone, which would reveal vanished players.
+        getServer().getScheduler().runTask(this, vanish::refreshVisibility);
         getServer().getScheduler().runTaskTimer(this, vanish::tick, 20L, 20L);
+        freeze = new FreezeService(this);
+        getServer().getPluginManager().registerEvents(freeze, this);
+        freeze.enableOnline();
+        getServer().getScheduler().runTaskTimer(this, freeze::tick, 20L, 20L);
+        inspect = new InspectMenus(this, items);
+        getServer().getPluginManager().registerEvents(inspect, this);
+        getServer().getScheduler().runTaskTimer(this, inspect::tick, 10L, 10L);
         getServer().getPluginManager().registerEvents(new MenuListener(this), this);
         getServer().getPluginManager().registerEvents(new DisplayGuard(items, getLogger()), this);
         menus = new PunishMenus(this, items, prompts);
@@ -475,6 +491,14 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
         return staffChat;
     }
 
+    public FreezeService freeze() {
+        return freeze;
+    }
+
+    public InspectMenus inspect() {
+        return inspect;
+    }
+
     public VanishService vanish() {
         return vanish;
     }
@@ -491,6 +515,10 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
         // Nobody stays hidden while MR-Punish is off; vanish itself stays in the PDC (DESIGN.md 11.2).
         if (vanish != null) {
             vanish.disable();
+        }
+        // The freeze effect is lifted (flight restored); the frozen rows stay, so enabling re-applies it.
+        if (freeze != null) {
+            freeze.disable();
         }
         // Nobody keeps a menu of a disabled plugin open.
         for (Player player : getServer().getOnlinePlayers()) {
@@ -592,7 +620,7 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
     }
 
     /** The server's commands and commands.yml aliases, for the mute's command blocking (DESIGN.md 7.8). */
-    private CommandLabelResolver.Lookup commandLookup() {
+    public CommandLabelResolver.Lookup commandLookup() {
         return new CommandLabelResolver.Lookup() {
             @Override
             public Optional<CommandLabelResolver.Known> command(String label) {

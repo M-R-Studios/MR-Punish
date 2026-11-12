@@ -150,6 +150,25 @@ staff:
   # To staff who can see the vanished player, instead of the public join and quit messages.
   vanish-joined: "<dark_gray>[<aqua>Staff<dark_gray>] <gray><player> joined (vanished)"
   vanish-left: "<dark_gray>[<aqua>Staff<dark_gray>] <gray><player> left (vanished)"
+  freeze-done: "<prefix><green>Froze <white><player></white>."
+  unfreeze-done: "<prefix><green>Unfroze <white><player></white>."
+  already-frozen: "<prefix><red><player> is already frozen."
+  not-frozen: "<prefix><red><player> isn't frozen."
+  freeze-self: "<prefix><red>You can't freeze yourself."
+  freeze-offline: "<prefix><red><player> isn't online. Only online players can be frozen."
+  freeze-rank: "<prefix><red>You can't freeze <player>: their rank is equal to or higher than yours."
+  freeze-failed: "<prefix><red>The freeze could not be saved, so nothing changed (error <error-id>)."
+  # To the frozen player: once when frozen, then every freeze.reminder-seconds.
+  frozen-chat:
+    - "<red><bold>You have been frozen by staff"
+    - "<gray>Don't log out. Follow the staff member's instructions in chat."
+  frozen-title: "<red>Frozen"
+  frozen-subtitle: "<gray>Don't log out. Check chat."
+  frozen-blocked: "<prefix><red>You can't do that while frozen."
+  unfrozen: "<prefix><green>You are no longer frozen."
+  invsee-self: "<prefix><red>Use your own inventory."
+  inspect-offline: "<prefix><red><player> isn't online."
+  inspect-closed: "<prefix><gray><player> left; the view was closed."
 
 # Sent to the punished player
 target:
@@ -198,6 +217,13 @@ target:
 notify:
   # Staff notifications (mrpunish.notify, except the staff member who acted) and console.
   # Never include IP addresses.
+  # A frozen player logged out, or joined while still frozen.
+  freeze-quit: "<dark_gray>[<red>MR<dark_gray>] <white><player></white> <red>logged out while frozen."
+  freeze-join: "<dark_gray>[<red>MR<dark_gray>] <white><player></white> <yellow>joined and is still frozen (frozen by <staff>)."
+  # freeze.on-quit: BAN couldn't ban them (refused or failed). Never silent.
+  freeze-ban-failed: "<dark_gray>[<red>MR<dark_gray>] <red>Couldn't ban <white><player></white> for logging out while frozen: <why>"
+  froze: "<dark_gray>[<red>MR<dark_gray>] <white><staff></white> <gray>froze</gray> <white><player></white>"
+  unfroze: "<dark_gray>[<red>MR<dark_gray>] <white><staff></white> <gray>unfroze</gray> <white><player></white>"
   issued: "<dark_gray>[<red>MR<dark_gray>] <white><staff></white> <gray><type-verb></gray> <white><target></white> <gray>for</gray> <reason> <gray>(<duration>, #<id><silent>)<note>"
   removed: "<dark_gray>[<red>MR<dark_gray>] <white><staff></white> <gray>removed <type> #<ids> from</gray> <white><target></white><gray>: <removal-reason>"
   # Added after "issued" for IP punishments: only a count of accounts, never an address.

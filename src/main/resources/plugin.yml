@@ -14,6 +14,7 @@ softdepend: [LuckPerms, floodgate]
 #   history (alias hist) <player> [page]: the history menu (console: a text list)
 #   report <player> [reason...]; reports [open|claimed|mine|closed|all] (players only)
 #   sc <message>; staffchat; stafflist; vanish (alias v) [player]
+#   freeze <player>; unfreeze <player>; invsee <player>; endersee <player>
 #   ban <player> [-s] <reason> [note...]
 #   unban <player> [reason...]
 #   warn <player> [-s] <reason> [note...]

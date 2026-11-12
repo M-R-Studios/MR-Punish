@@ -107,7 +107,10 @@ public final class VanishService implements Listener {
         }
     }
 
-    /** Every pair again (rank refresh, reload). */
+    /**
+     * Every pair again (the 60 s rank refresh, {@code /mrpunish reload}). A vanished player who has
+     * lost {@code mrpunish.vanish} is made visible, so nobody is stuck invisible.
+     */
     public void refreshAll() {
         for (Player p : plugin.getServer().getOnlinePlayers()) {
             if (isVanished(p.getUniqueId()) && !p.hasPermission(USE)) {
@@ -115,6 +118,16 @@ public final class VanishService implements Listener {
                 state.get().messages().send(p, "staff.vanish-lost-permission");
                 continue;
             }
+            refreshViewer(p);
+        }
+    }
+
+    /**
+     * Who sees whom again, without the permission check (right after the plugin enabled, when a
+     * permissions plugin may still be loading online players after a /reload).
+     */
+    public void refreshVisibility() {
+        for (Player p : plugin.getServer().getOnlinePlayers()) {
             refreshViewer(p);
         }
     }
@@ -167,13 +180,13 @@ public final class VanishService implements Listener {
      * A joining player (or one already online when the plugin enables): vanished again if they
      * were (PDC), and hidden from them whoever they may not see. Returns whether they're vanished.
      */
-    private boolean restore(Player p) {
+    private boolean restore(Player p, boolean checkPermission) {
         boolean marked = p.getPersistentDataContainer().has(key, PersistentDataType.BYTE);
         boolean again = false;
         if (marked) {
             if (!settings().persist()) {
                 p.getPersistentDataContainer().remove(key);
-            } else if (!p.hasPermission(USE)) {
+            } else if (checkPermission && !p.hasPermission(USE)) {
                 p.getPersistentDataContainer().remove(key);
                 plugin.getServer().getScheduler().runTask(plugin, () -> {
                     if (p.isOnline()) {
@@ -194,7 +207,8 @@ public final class VanishService implements Listener {
     @EventHandler(priority = EventPriority.LOWEST)
     public void onJoin(PlayerJoinEvent event) {
         Player p = event.getPlayer();
-        if (restore(p)) {
+        // At join the permissions plugin has loaded the player (it does so before the join).
+        if (restore(p, true)) {
             event.joinMessage(null);
             toSeers(p, "staff.vanish-joined");
             plugin.getServer().getScheduler().runTask(plugin, () -> {
@@ -291,10 +305,14 @@ public final class VanishService implements Listener {
 
     // ---- Lifecycle ----
 
-    /** Plugin enable with players online (after /reload): re-apply from the PDC, quietly. */
+    /**
+     * Plugin enable with players online (after /reload): re-apply from the PDC, quietly. The
+     * permission isn't checked here: after a /reload the permissions plugin may still be loading
+     * online players, and a vanish must not be lost to that. The rank refresh checks it later.
+     */
     public void enableOnline() {
         for (Player p : plugin.getServer().getOnlinePlayers()) {
-            restore(p);
+            restore(p, false);
         }
     }
 

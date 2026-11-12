@@ -357,6 +357,18 @@ vanish:
   # Remind vanished players on the action bar every N seconds. 0 = never.
   reminder-seconds: 30
 
+freeze:
+  # Commands a frozen player can still use (name or alias, without the /). Staff chat always works
+  # for staff.
+  allowed-commands: [msg, tell, r, reply, helpop]
+  # Seconds between reminder messages and titles to the frozen player. 0 = only once.
+  reminder-seconds: 10
+  # What happens when a frozen player logs out.
+  # NOTIFY: alert staff and log it. The player stays frozen and is frozen again when they join.
+  # BAN:    also ban them with the freeze-logout reason (with escalation), issued by the staff member
+  #         who froze them (or by console). Their authority is checked as usual.
+  on-quit: NOTIFY
+
 staff-chat:
   # Messages starting with this go to staff chat (for players with mrpunish.staffchat). "" = off.
   prefix: "#"
@@ -380,6 +392,10 @@ commands:
   sc: { enabled: true, aliases: [] }
   stafflist: { enabled: true, aliases: [] }
   vanish: { enabled: true, aliases: [v] }
+  freeze: { enabled: true, aliases: [] }
+  unfreeze: { enabled: true, aliases: [] }
+  invsee: { enabled: true, aliases: [] }
+  endersee: { enabled: true, aliases: [] }
   ban:   { enabled: true, aliases: [] }
   unban: { enabled: true, aliases: [] }
   warn:   { enabled: true, aliases: [] }
@@ -436,3 +452,5 @@ sounds:
   report: { enabled: true, sound: minecraft:block.note_block.chime, volume: 0.8, pitch: 1.2 }
   # Played to staff on a staff chat message.
   staff-chat: { enabled: true, sound: minecraft:entity.item.pickup, volume: 0.4, pitch: 1.6 }
+  # Played to a player when they're frozen.
+  frozen: { enabled: true, sound: minecraft:block.glass.break, volume: 1.0, pitch: 0.8 }

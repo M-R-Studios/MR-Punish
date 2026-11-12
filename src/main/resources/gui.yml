@@ -279,3 +279,30 @@ report-notes:
   previous-slot: 45
   back-slot: 49
   next-slot: 53
+
+# /invsee <player>: a view-only live copy (refreshed twice a second). Rows 1-4 are the storage slots
+# (the first row is the hotbar), row 5 the armour (helmet to boots) and the off-hand.
+invsee:
+  title: "Inventory of <player>"
+  rows: 6
+  # The armour and off-hand slots.
+  armor-slots: [36, 37, 38, 39]
+  offhand-slot: 40
+  # The target's head. <health>, <food>, <level>, <gamemode>, <world>.
+  head:
+    slot: 49
+    name: "<white><player>"
+    lore:
+      - "<gray>Health: <white><health>"
+      - "<gray>Food: <white><food>"
+      - "<gray>Level: <white><level>"
+      - "<gray>Game mode: <white><gamemode>"
+      - "<gray>World: <white><world>"
+      - ""
+      - "<dark_gray>Updates live. View only."
+  close-slot: 53
+
+# /endersee <player>: a view-only live copy of the 27 ender chest slots.
+endersee:
+  title: "Ender chest of <player>"
+  rows: 3

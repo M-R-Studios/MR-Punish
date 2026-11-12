@@ -16,8 +16,8 @@ class SettingsLoaderTest {
     /** Any material is an item except names starting with NOT_. */
     /** The commands the plugin ships that config.yml can switch. */
     static final List<String> SHIPPED_COMMANDS = List.of("punish", "history", "report", "reports", "staffchat", "sc",
-            "stafflist", "vanish", "ban", "unban", "warn", "unwarn", "mute", "unmute", "muteip", "banip", "unmuteip",
-            "unbanip");
+            "stafflist", "vanish", "freeze", "unfreeze", "invsee", "endersee", "ban", "unban", "warn", "unwarn", "mute",
+            "unmute", "muteip", "banip", "unmuteip", "unbanip");
 
     private static SettingsLoader loader() {
         return loader(SHIPPED_COMMANDS);
@@ -274,6 +274,10 @@ class SettingsLoaderTest {
                   sc: { enabled: true, aliases: [] }
                   stafflist: { enabled: true, aliases: [] }
                   vanish: { enabled: true, aliases: [v] }
+                  freeze: { enabled: true, aliases: [] }
+                  unfreeze: { enabled: true, aliases: [] }
+                  invsee: { enabled: true, aliases: [] }
+                  endersee: { enabled: true, aliases: [] }
                   ban:   { enabled: true, aliases: [] }
                   unban: { enabled: true, aliases: [] }
                   warn:   { enabled: true, aliases: [] }
@@ -297,11 +301,11 @@ class SettingsLoaderTest {
 
     @Test
     void missingCommandToggleWarnsAndIsOn() {
-        List<String> withFreeze = new java.util.ArrayList<>(SHIPPED_COMMANDS);
-        withFreeze.add("freeze");
-        LoadResult<Settings> result = loader(withFreeze).load(bundledText());
-        assertTrue(has(result, "commands.freeze is missing, using enabled: true"), result.warnings().toString());
-        assertEquals(CommandToggle.DEFAULT, result.value().command("freeze"));
+        List<String> withStaffMode = new java.util.ArrayList<>(SHIPPED_COMMANDS);
+        withStaffMode.add("staffmode");
+        LoadResult<Settings> result = loader(withStaffMode).load(bundledText());
+        assertTrue(has(result, "commands.staffmode is missing, using enabled: true"), result.warnings().toString());
+        assertEquals(CommandToggle.DEFAULT, result.value().command("staffmode"));
         assertEquals(CommandToggle.DEFAULT, result.value().command("ban"));
     }
 

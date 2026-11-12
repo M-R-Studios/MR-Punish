@@ -97,6 +97,24 @@ public final class Items {
         meta.setCustomModelData(model);
     }
 
+    /**
+     * A copy of a real item for a view-only menu (invsee, endersee), marked as a display item so a
+     * copy that ever got out would be removed. Null for empty slots.
+     */
+    public ItemStack displayCopy(ItemStack source) {
+        if (source == null || source.getType().isAir()) {
+            return null;
+        }
+        ItemStack copy = source.clone();
+        ItemMeta meta = copy.getItemMeta();
+        if (meta == null) {
+            return copy;
+        }
+        meta.getPersistentDataContainer().set(key, PersistentDataType.BYTE, (byte) 1);
+        copy.setItemMeta(meta);
+        return copy;
+    }
+
     /** MiniMessage text for menus: not italic unless asked for. */
     public static Component render(String text, TagResolver placeholders) {
         return plain(MINI.deserialize(text, placeholders));

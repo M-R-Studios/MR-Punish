@@ -39,5 +39,8 @@
 - `/stafflist`: online staff by rank; vanished staff only for those who can see them.
 - `/vanish [player]`: hidden from players and lower-ranked staff, kept across relogs and restarts (`vanish.persist`), no join or quit messages, left out of the server list, no item pickup, pressure plates or mob targeting, an action-bar reminder, and the `vanished` metadata for other plugins. Nobody stays hidden when MR-Punish is disabled or when they lose the permission.
 
+- `/freeze` and `/unfreeze` (also offline): a frozen player can look around and chat but not move, teleport, interact, use their inventory or fight; allowed commands are configurable. The freeze survives logout, restart and server switches; staff are told when a frozen player logs out, and `freeze.on-quit: BAN` bans them for it.
+- `/invsee` and `/endersee`: view-only live copies of a player's inventory and ender chest.
+
 ### Changed
 - `/mute` and `/ban` (and `/muteip`, `/banip`) from a player now open the confirmation menu instead of applying straight away; without a reason, `/warn`, `/mute` and `/ban` open the reason menu. Console is unchanged.

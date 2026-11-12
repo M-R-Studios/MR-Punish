@@ -43,7 +43,7 @@ public final class SettingsLoader {
     private static final Set<String> TOP_LEVEL = Set.of("config-version", "escalation", "fallback-reasons", "reasons",
             "commands", "storage", "server-name", "warnings", "announcements", "hooks", "sounds", "date-format",
             "time-zone", "appeal-link", "ban", "login", "input", "mute", "ip", "bedrock", "reports", "vanish",
-            "staff-chat");
+            "staff-chat", "freeze");
     private static final Set<String> REASON_FIELDS = Set.of("type", "display", "description", "icon", "slot", "aliases",
             "escalation", "history-period", "permission", "enabled");
     private static final Set<String> TOGGLE_FIELDS = Set.of("enabled", "aliases");
@@ -183,9 +183,11 @@ public final class SettingsLoader {
                 new Settings.SoundSetting(true, NamespacedKey.minecraft("block.note_block.chime"), 0.8f, 1.2f));
         Settings.SoundSetting staffChatSound = sound(r, "sounds.staff-chat",
                 new Settings.SoundSetting(true, NamespacedKey.minecraft("entity.item.pickup"), 0.4f, 1.6f));
-        warnUnknownIn(yaml, "sounds", Set.of("notify", "punished", "failed", "warned", "report", "staff-chat"),
-                warnings);
-        for (String name : List.of("notify", "punished", "failed", "warned", "report", "staff-chat")) {
+        Settings.SoundSetting frozenSound = sound(r, "sounds.frozen",
+                new Settings.SoundSetting(true, NamespacedKey.minecraft("block.glass.break"), 1.0f, 0.8f));
+        warnUnknownIn(yaml, "sounds", Set.of("notify", "punished", "failed", "warned", "report", "staff-chat",
+                "frozen"), warnings);
+        for (String name : List.of("notify", "punished", "failed", "warned", "report", "staff-chat", "frozen")) {
             warnUnknownIn(yaml, "sounds." + name, Set.of("enabled", "sound", "volume", "pitch"), warnings);
         }
 
@@ -263,12 +265,27 @@ public final class SettingsLoader {
                 "at most 8 characters without spaces, or \"\" for none");
         warnUnknownIn(yaml, "staff-chat", Set.of("prefix"), warnings);
         Settings.StaffChat staffChat = new Settings.StaffChat(prefix, staffChatSound);
+        Set<String> allowed = new java.util.LinkedHashSet<>();
+        for (String command : r.textList("freeze.allowed-commands", List.of("msg", "tell", "r", "reply", "helpop"))) {
+            String label = command.strip().toLowerCase(Locale.ROOT);
+            if (label.startsWith("/")) {
+                label = label.substring(1);
+            }
+            if (!label.isEmpty() && !label.contains(" ")) {
+                allowed.add(label);
+            } else {
+                warnings.add("freeze.allowed-commands: '" + command + "' is not a command name, skipped");
+            }
+        }
+        Settings.Freeze freeze = new Settings.Freeze(allowed, r.wholeNumber("freeze.reminder-seconds", 0, 3600, 10),
+                r.choice("freeze.on-quit", Settings.FreezeQuit.class, Settings.FreezeQuit.NOTIFY), frozenSound);
+        warnUnknownIn(yaml, "freeze", Set.of("allowed-commands", "reminder-seconds", "on-quit"), warnings);
         warnUnknownIn(yaml, "reports", Set.of("cooldown-seconds", "max-open-per-player", "allow-reporting-staff",
                 "claim-timeout-minutes", "reminder-minutes", "reasons"), warnings);
 
         return LoadResult.loaded(new Settings(historyPeriod, registry, commands, storage, serverName, activeFor,
                 announcements, luckperms, notify, display, login, kickOnline, maxText, punished, failed, warnTitle,
-                mute, warned, ip, input, floodgate, reports, vanish, staffChat), warnings);
+                mute, warned, ip, input, floodgate, reports, vanish, staffChat, freeze), warnings);
     }
 
     /** {@code reports.reasons}: key -> display and icon. A bad entry is skipped with a warning. */

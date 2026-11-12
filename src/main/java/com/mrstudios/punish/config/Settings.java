@@ -36,7 +36,7 @@ public record Settings(TimeSpan historyPeriod, ReasonRegistry reasons, Map<Strin
         boolean luckperms, SoundSetting notifySound, Display display, Login login, boolean banKickOnline,
         int maxTextLength, SoundSetting punishedSound, SoundSetting failedSound, boolean warnTitle, Mute mute,
         SoundSetting warnedSound, Ip ip, Input input, boolean floodgate, Reports reports,
-        Vanish vanish, StaffChat staffChat) {
+        Vanish vanish, StaffChat staffChat, Freeze freeze) {
 
     public Settings {
         commands = Map.copyOf(commands);
@@ -176,5 +176,24 @@ public record Settings(TimeSpan historyPeriod, ReasonRegistry reasons, Map<Strin
 
     /** {@code staff-chat.*} (DESIGN.md 11.5). @param prefix "" = no prefix routing */
     public record StaffChat(String prefix, SoundSetting sound) {
+    }
+
+    /** What happens when a frozen player logs out (DESIGN.md 11.3). */
+    public enum FreezeQuit {
+        NOTIFY, BAN
+    }
+
+    /**
+     * {@code freeze.*} (DESIGN.md 11.3).
+     *
+     * @param allowedCommands command names a frozen player may still use, lower case
+     * @param reminderSeconds 0 = the frozen message and title only once
+     */
+    public record Freeze(java.util.Set<String> allowedCommands, int reminderSeconds, FreezeQuit onQuit,
+            SoundSetting sound) {
+
+        public Freeze {
+            allowedCommands = java.util.Set.copyOf(allowedCommands);
+        }
     }
 }
