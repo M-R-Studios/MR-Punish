@@ -49,11 +49,15 @@ class MessagesLoaderTest {
                 continue;
             }
             TagResolver[] filled = MessagesLoader.placeholders(key).stream()
-                    .map(name -> Placeholder.unparsed(name, "[" + name + "]"))
+                    // A <...-click> tag wraps text and is filled in code with a click event.
+                    .map(name -> name.endsWith("-click")
+                            ? net.kyori.adventure.text.minimessage.tag.resolver.TagResolver.resolver(name,
+                                    net.kyori.adventure.text.minimessage.tag.Tag.styling())
+                            : Placeholder.unparsed(name, "[" + name + "]"))
                     .toArray(TagResolver[]::new);
             String text = plain(messages.component(key, filled));
             for (String name : MessagesLoader.placeholders(key)) {
-                if (OPTIONAL.contains(key + " " + name)) {
+                if (OPTIONAL.contains(key + " " + name) || name.endsWith("-click")) {
                     continue;
                 }
                 assertTrue(text.contains("[" + name + "]"), key + " doesn't show <" + name + ">: " + text);

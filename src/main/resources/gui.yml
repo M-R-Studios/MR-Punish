@@ -41,7 +41,8 @@ punish-menu:
   rows: 5
   head:
     slot: 4
-    # The player's head. <uuid>, <status>, <rank>, <active>, <total>; <previous> becomes one line per entry.
+    # The player's head. <uuid>, <status>, <rank>, <active>, <total>, <reports> (reports against them) and
+    # <reports-open> (of those, still open or claimed); <previous> becomes one line per entry.
     name: "<white><player>"
     lore:
       - "<dark_gray><uuid>"
@@ -49,6 +50,7 @@ punish-menu:
       - "<gray>Rank: <rank>"
       - "<gray>Active punishments: <white><active>"
       - "<gray>Total punishments: <white><total>"
+      - "<gray>Reports against: <white><reports></white> (<reports-open> open)"
       - "<gray>Previous offences:"
       - "<previous>"
     online: "<green>online"
@@ -321,6 +323,7 @@ staff-tools:
   vanish-on: { slot: 7, material: LIME_DYE, name: "<green>Vanished", lore: ["<gray>Right-click: become visible."] }
   vanish-off: { slot: 7, material: GRAY_DYE, name: "<gray>Visible", lore: ["<gray>Right-click: vanish."] }
   reports: { slot: 8, material: WRITABLE_BOOK, name: "<gold>Reports", lore: ["<gray>Right-click: open /reports."] }
+  hub: { slot: 6, material: NETHER_STAR, name: "<yellow>Staff menu", lore: ["<gray>Right-click: open /staff."] }
 
 # The teleport tool's list of online players (45 a page).
 player-picker:
@@ -330,4 +333,142 @@ player-picker:
   entry-lore: ["<gray>World: <white><world>", "<yellow>Click to teleport"]
   previous-slot: 45
   close-slot: 49
+  next-slot: 53
+
+# /staff (DESIGN.md 11.7). Buttons you don't have permission for follow no-permission.mode.
+staff-menu:
+  title: "Staff"
+  rows: 5
+  # On/off as shown in lore (<state>, <staffmode>, <vanish>, <staffchat>).
+  state-on: "<green>on"
+  state-off: "<red>off"
+  head:
+    slot: 4
+    # Your own head. <rank>, <staffmode>, <vanish>, <staffchat>.
+    name: "<white><player>"
+    lore:
+      - "<gray>Rank: <rank>"
+      - "<gray>Staff mode: <staffmode>"
+      - "<gray>Vanish: <vanish>"
+      - "<gray>Staff chat: <staffchat>"
+  reports: { slot: 10, material: WRITABLE_BOOK, name: "<gold>Player Reports", lore: ["<gray>Open: <white><open>", "<gray>Claimed: <white><claimed>", "", "<yellow>Click to open"] }
+  online-staff: { slot: 11, material: PLAYER_HEAD, name: "<aqua>Online Staff", lore: ["<gray>Staff online now.", "", "<yellow>Click to open"] }
+  staff-chat: { slot: 12, material: PAPER, name: "<aqua>Staff Chat", lore: ["<gray>All your chat to staff: <state>", "", "<yellow>Click to toggle"] }
+  staff-mode: { slot: 13, material: SHIELD, name: "<aqua>Staff Mode", lore: ["<gray>Staff mode: <state>", "", "<yellow>Click to toggle"] }
+  vanish: { slot: 14, material: ENDER_PEARL, name: "<aqua>Vanish", lore: ["<gray>Vanished: <state>", "", "<yellow>Click to toggle"] }
+  freeze-tools: { slot: 15, material: PACKED_ICE, name: "<aqua>Freeze Tools", lore: ["<gray>Frozen here now: <white><frozen>", "", "<yellow>Click to open"] }
+  # Lore only; a click reads it again. <tps-1m> <tps-5m> <tps-15m> <mspt> <memory-used> <memory-max> (MB)
+  # <uptime> <online> <max> <staff> <vanished> <open-reports> <bans> <mutes> (in force, IP ones included)
+  # <storage> <storage-status> <version>.
+  server-info:
+    slot: 16
+    material: COMPARATOR
+    name: "<aqua>Server Information"
+    lore:
+      - "<gray>TPS: <white><tps-1m></white>, <white><tps-5m></white>, <white><tps-15m>"
+      - "<gray>MSPT: <white><mspt>"
+      - "<gray>Memory: <white><memory-used></white> / <white><memory-max></white> MB"
+      - "<gray>Uptime: <white><uptime>"
+      - "<gray>Players: <white><online></white> / <white><max>"
+      - "<gray>Staff online: <white><staff>"
+      - "<gray>Vanished: <white><vanished>"
+      - "<gray>Open reports: <white><open-reports>"
+      - "<gray>Bans in force: <white><bans>"
+      - "<gray>Mutes in force: <white><mutes>"
+      - "<gray>Storage: <white><storage></white> (<storage-status>)"
+      - "<gray>MR-Punish <white><version>"
+      - ""
+      - "<yellow>Click to refresh"
+  invsee: { slot: 20, material: CHEST, name: "<yellow>Inventory Inspection", lore: ["<gray>Pick a player."] }
+  endersee: { slot: 21, material: ENDER_CHEST, name: "<yellow>Ender Chest Inspection", lore: ["<gray>Pick a player."] }
+  history: { slot: 22, material: BOOK, name: "<yellow>Punishment History", lore: ["<gray>Pick a player, or search", "<gray>any name (offline too)."] }
+  stafflog: { slot: 23, material: CLOCK, name: "<yellow>Recent Staff Actions", lore: ["<gray>The staff log."] }
+  punish: { slot: 24, material: IRON_AXE, name: "<red>Punish a player", lore: ["<gray>Pick a player, or search", "<gray>any name (offline too)."] }
+  close-slot: 40
+
+# The /staff menu's player picker: online players you can see (not you), 45 a page, and a name search.
+staff-picker:
+  title: "<purpose> (<page>/<pages>)"
+  rows: 6
+  purposes:
+    INVSEE: "Inspect inventory"
+    ENDERSEE: "Inspect ender chest"
+    HISTORY: "Punishment history"
+    PUNISH: "Punish a player"
+    FREEZE: "Freeze a player"
+  entry-name: "<white><player>"
+  entry-lore: ["<gray>World: <white><world>", "<yellow>Click to choose"]
+  search: { slot: 47, material: NAME_TAG, name: "<yellow>Search by name", lore: ["<gray>Type any player's name,", "<gray>offline players too."] }
+  previous-slot: 45
+  back-slot: 49
+  next-slot: 53
+
+# The /staff menu's Online Staff: staff you can see, highest rank first.
+online-staff:
+  title: "Online staff (<page>/<pages>)"
+  rows: 6
+  entry-name: "<white><player>"
+  entry-lore: ["<gray>Rank: <rank>", "<gray>Staff mode: <staffmode>", "<gray>Vanished: <vanish>", "<admin-lore>"]
+  # Added for admins (mrpunish.admin) only.
+  admin-lore: ["", "<yellow>Click: staff profile in chat", "<yellow>Shift-click: end their staff mode and vanish"]
+  previous-slot: 45
+  back-slot: 49
+  next-slot: 53
+
+# Confirmations in the /staff menus. <what> is what Confirm does.
+staff-confirm:
+  title: "Are you sure?"
+  rows: 3
+  confirm: { slot: 11, material: LIME_CONCRETE, name: "<green>Confirm", lore: ["<gray><what>"] }
+  cancel: { slot: 15, material: RED_CONCRETE, name: "<red>Cancel", lore: ["<gray>Go back."] }
+  unfreeze: "Unfreeze <player>"
+  forceexit: "End <player>'s staff mode and vanish"
+
+# The /staff menu's Freeze Tools: everyone frozen (online and offline), newest first.
+frozen-menu:
+  title: "Frozen players (<page>/<pages>)"
+  rows: 6
+  entry-name: "<aqua><player>"
+  entry-lore: ["<gray>Frozen by: <white><by>", "<gray>Since: <white><since>", "<gray>Server: <white><server>", "<gray>Now: <status>", "", "<yellow>Click to unfreeze"]
+  online: "<green>online"
+  offline: "<red>offline"
+  empty: { slot: 22, material: LIGHT_GRAY_STAINED_GLASS_PANE, name: "<gray>Nobody is frozen" }
+  freeze: { slot: 47, material: BLUE_ICE, name: "<aqua>Freeze a player", lore: ["<gray>Pick an online player."] }
+  previous-slot: 45
+  back-slot: 49
+  next-slot: 53
+
+# /stafflog and Recent Staff Actions (DESIGN.md 13.6): newest first, 45 a page.
+stafflog-menu:
+  title: "Staff log (<page>/<pages>)"
+  rows: 6
+  # One item per group: punishments red, removals light blue, reports orange, inspections purple,
+  # staff tools green, admin grey. <action> is the action (PUNISH, FREEZE...).
+  group-items:
+    PUNISHMENTS: { material: RED_WOOL, name: "<red><action>" }
+    REMOVALS: { material: LIGHT_BLUE_WOOL, name: "<aqua><action>" }
+    REPORTS: { material: ORANGE_WOOL, name: "<gold><action>" }
+    INSPECTIONS: { material: PURPLE_WOOL, name: "<light_purple><action>" }
+    STAFF_TOOLS: { material: LIME_WOOL, name: "<green><action>" }
+    ADMIN: { material: LIGHT_GRAY_WOOL, name: "<gray><action>" }
+  entry-lore: ["<gray>By: <white><actor>", "<gray>Target: <white><target>", "<gray>When: <white><date>", "<gray>Server: <white><server>", "<details-line>", "<action-line>"]
+  details-line: "<gray>Details: <white><details>"
+  open-history: "<yellow>Click to open this punishment"
+  open-report: "<yellow>Click to open this report"
+  # Shown as the target of actions without one (a reload).
+  none: "-"
+  groups:
+    ALL: "All"
+    PUNISHMENTS: "Punishments"
+    REMOVALS: "Removals"
+    REPORTS: "Reports"
+    INSPECTIONS: "Inspections"
+    STAFF_TOOLS: "Staff tools"
+    ADMIN: "Admin"
+  group-filter: { slot: 47, material: HOPPER, name: "<yellow>Actions: <white><filter>", lore: ["<gray>Click to change."] }
+  # Only when a staff member was given (/stafflog <staff>).
+  actor-filter: { slot: 51, material: PLAYER_HEAD, name: "<yellow>Only <white><player></white>: <state>", lore: ["<gray>Click to change."] }
+  empty: { slot: 22, material: LIGHT_GRAY_STAINED_GLASS_PANE, name: "<gray>No staff actions" }
+  previous-slot: 45
+  back-slot: 49
   next-slot: 53

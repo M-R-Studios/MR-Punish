@@ -61,6 +61,11 @@ class PluginMuteTest {
         public double mspt() {
             return 3.5;
         }
+
+        @Override
+        public double[] tpsAll() {
+            return new double[] {20.0, 19.5, 19.8};
+        }
     }
 
     @BeforeEach

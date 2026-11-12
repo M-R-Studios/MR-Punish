@@ -45,7 +45,12 @@
 - `/staffmode` (alias `/sm`): staff tools (teleport, random player, inspect, freeze wand, punish, vanish, reports), protection, the staff scoreboard (`scoreboard.yml`), and a full restore of inventory and state on exit, logout, kick, death, `/stop`, plugin disable and after a crash. `/mrpunish forceexit <player>` ends someone's staff mode and vanish; `/stafflist` shows who is in staff mode (to staff).
 - Report details: teleport to the report location or the reported player, in staff mode or vanished.
 - With EssentialsX, vanished players are hidden from Essentials' `/list` and AFK messages.
+- `/staff`: the staff menu with reports, online staff, staff chat, staff mode and vanish toggles, freeze tools (every frozen player, online and offline), server information, inspection, history and punish pickers with a name search, and the staff log. A nether star in staff mode opens it.
+- `/stafflog [staff] [page]`: every staff action, newest first, filtered by kind or staff member; entries open the punishment or report. Also written to daily files in `logs/` (`logs.*`).
+- `/mrpunish staff <player>`: a staff member's punishments, handled reports and last actions.
+- The punish menu's head shows the reports against the player.
 
 ### Changed
+- `/vanish` in staff mode now updates the vanish tool.
 - `/mute` and `/ban` (and `/muteip`, `/banip`) from a player now open the confirmation menu instead of applying straight away; without a reason, `/warn`, `/mute` and `/ban` open the reason menu. Console is unchanged.
 - The startup command-clash warning now checks which command actually runs a label, and no longer warns about a `commands.yml` alias that points at MR-Punish.

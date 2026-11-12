@@ -16,7 +16,7 @@ class SettingsLoaderTest {
     /** Any material is an item except names starting with NOT_. */
     /** The commands the plugin ships that config.yml can switch. */
     static final List<String> SHIPPED_COMMANDS = List.of("punish", "history", "report", "reports", "staffchat", "sc",
-            "stafflist", "vanish", "staffmode", "freeze", "unfreeze", "invsee", "endersee", "ban", "unban", "warn", "unwarn", "mute",
+            "stafflist", "vanish", "staffmode", "staff", "stafflog", "freeze", "unfreeze", "invsee", "endersee", "ban", "unban", "warn", "unwarn", "mute",
             "unmute", "muteip", "banip", "unmuteip", "unbanip");
 
     private static SettingsLoader loader() {
@@ -274,6 +274,8 @@ class SettingsLoaderTest {
                   sc: { enabled: true, aliases: [] }
                   stafflist: { enabled: true, aliases: [] }
                   vanish: { enabled: true, aliases: [v] }
+                  staff: { enabled: true, aliases: [] }
+                  stafflog: { enabled: true, aliases: [] }
                   staffmode: { enabled: true, aliases: [sm] }
                   freeze: { enabled: true, aliases: [] }
                   unfreeze: { enabled: true, aliases: [] }
@@ -303,10 +305,10 @@ class SettingsLoaderTest {
     @Test
     void missingCommandToggleWarnsAndIsOn() {
         List<String> withHub = new java.util.ArrayList<>(SHIPPED_COMMANDS);
-        withHub.add("staff");
+        withHub.add("helpop");
         LoadResult<Settings> result = loader(withHub).load(bundledText());
-        assertTrue(has(result, "commands.staff is missing, using enabled: true"), result.warnings().toString());
-        assertEquals(CommandToggle.DEFAULT, result.value().command("staff"));
+        assertTrue(has(result, "commands.helpop is missing, using enabled: true"), result.warnings().toString());
+        assertEquals(CommandToggle.DEFAULT, result.value().command("helpop"));
         assertEquals(CommandToggle.DEFAULT, result.value().command("ban"));
     }
 

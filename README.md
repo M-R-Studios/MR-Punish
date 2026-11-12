@@ -76,9 +76,26 @@ With `vanish.persist` you stay vanished across a relog or restart. Nobody can ge
 
 ## Staff mode
 
-`/staffmode` (alias `/sm`, `mrpunish.staffmode`) saves your whole state (inventory, armour, off-hand, game mode, flight, location, health, food, experience, effects, fire, air), clears your inventory and gives you the staff tools: a teleport compass (pick an online player), a random-player teleport, an inspect book (right-click a player for their inventory, sneak for their ender chest), a freeze wand, a punish axe, a vanish toggle and a reports book. You only get the tools you have the permission for. You fly, can't be hurt, don't get hungry, aren't targeted by mobs and are vanished (`staff-mode.vanish`); the staff scoreboard (`scoreboard.yml`) is shown. Tools can't be dropped, moved or placed; containers open but nothing can be taken (`staff-mode.allow-containers`), and building and pickup are off unless `allow-build` / `allow-pickup`.
+`/staffmode` (alias `/sm`, `mrpunish.staffmode`) saves your whole state (inventory, armour, off-hand, game mode, flight, location, health, food, experience, effects, fire, air), clears your inventory and gives you the staff tools: a teleport compass (pick an online player), a random-player teleport, an inspect book (right-click a player for their inventory, sneak for their ender chest), a freeze wand, a punish axe, a vanish toggle, a reports book and a nether star that opens the `/staff` menu. You only get the tools you have the permission for. You fly, can't be hurt, don't get hungry, aren't targeted by mobs and are vanished (`staff-mode.vanish`); the staff scoreboard (`scoreboard.yml`) is shown. Tools can't be dropped, moved or placed; containers open but nothing can be taken (`staff-mode.allow-containers`), and building and pickup are off unless `allow-build` / `allow-pickup`.
 
 `/staffmode` again gives everything back exactly as it was, and so do logging out, a kick, `/stop` and disabling the plugin. If you die in staff mode nothing drops and you get everything back on respawn. The saved state is kept in your own player data, so after a crash your next join restores it ("You left staff mode unexpectedly last time"). Losing `mrpunish.staffmode` ends it within a minute. `/mrpunish forceexit <player>` (admins, with a higher rank) ends someone's staff mode and vanish. `/stafflist` shows "[staff mode]" to staff only. In a report's details, the teleport buttons (to the report location and to the reported player) work while you're in staff mode or vanished.
+
+## The staff menu and staff log
+
+`/staff` (`mrpunish.staff`) opens the staff menu: your own head (rank, staff mode, vanish and staff chat), Player Reports (with the open and claimed counts), Online Staff, Staff Chat, Staff Mode and Vanish toggles, Freeze Tools, Server Information, Inventory and Ender Chest Inspection, Punishment History, Recent Staff Actions and Punish a player. Each button needs the same permission as its command and is checked again when you click; buttons you can't use are greyed or hidden (`gui.yml` `no-permission.mode`). In staff mode, the nether star tool opens it.
+
+- The player pickers list the online players you can see (not yourself). **Search by name** asks for any name in chat (or a form on Bedrock), so history and punishments work for offline players too.
+- **Online Staff** shows the staff you can see with their rank, staff mode and vanish. Admins (`mrpunish.admin`) click a head for that member's profile in chat, or shift-click to end their staff mode and vanish (with a confirmation).
+- **Freeze Tools** lists everyone frozen, online and offline, with who froze them and when; click to unfreeze (with a confirmation). "Freeze a player" opens a picker.
+- **Server Information** shows TPS, MSPT, memory, uptime, players, staff online, vanished players, open reports, bans and mutes in force, storage and the plugin version. Click to refresh.
+
+Every staff action is logged: punishments, refusals, removals, report activity, inspections, freezes, staff mode, vanish, reloads, imports and force exits. `/stafflog [staff] [page]` and Recent Staff Actions (`mrpunish.logs`) show the log, newest first, coloured by kind, with a filter by kind and, when you name a staff member, by that member. Click a punishment or removal to open it in the player's history, or a report action to open the report. The console gets a text list. Opening someone's history is logged too with `logs.log-history-views: true`.
+
+The log is also written to `plugins/MR-Punish/logs/staff-YYYY-MM-DD.log` (`logs.file.enabled`), and files older than `logs.file.keep-days` are deleted. `logs.retention-days` deletes old log entries from the database (punishments and reports are never deleted). Nothing that looks like an IP address is ever written or shown.
+
+`/mrpunish staff <player>` (`mrpunish.admin`) shows a staff member's rank, the punishments they issued (last 30 days and in total, by type), the reports they handled and their last 10 actions, with a clickable "end staff mode and vanish" when they're in staff mode or vanished.
+
+The punish menu's head also shows how many reports there are against the player and how many are still open.
 
 ## Freeze
 
@@ -130,6 +147,9 @@ To give a label back to vanilla or another plugin, turn it off in `config.yml` (
 | `/vanish [player]` (alias `/v`) | `mrpunish.vanish`; another player: `mrpunish.vanish.others` and a higher rank | Toggles vanish. |
 | `/staffmode` (alias `/sm`) | `mrpunish.staffmode` | Enters or leaves staff mode. |
 | `/mrpunish forceexit <player>` | `mrpunish.admin` and a higher rank | Ends someone's staff mode and vanish. |
+| `/staff` | `mrpunish.staff` | The staff menu. Players only. |
+| `/stafflog [staff] [page]` | `mrpunish.logs` | The staff action log; console gets a text list. |
+| `/mrpunish staff <player>` | `mrpunish.admin` | A staff member's profile. |
 | `/freeze <player>` | `mrpunish.freeze` and a higher rank | Freezes an online player. |
 | `/unfreeze <player>` | `mrpunish.freeze` | Unfreezes, also an offline player. |
 | `/invsee <player>` | `mrpunish.invsee` | View-only live copy of an online player's inventory. |
@@ -156,7 +176,7 @@ Rank nodes grant the feature permissions through `permissions.yml`, so you can c
 | `mrpunish.admin` | (rank node) | false | Administrator rank, and admin tools (`/mrpunish version`). |
 | `mrpunish.owner` | (rank node) | op | Owner rank. |
 | `mrpunish.exempt` | nobody | false | Can only be punished by console. |
-| `mrpunish.staff` | helper | false | Base staff permission: `/mrpunish` help, staff notifications. |
+| `mrpunish.staff` | helper | false | Base staff permission: `/mrpunish` help, the `/staff` menu, staff notifications. |
 | `mrpunish.punish` | helper | false | The `/punish` menu. |
 | `mrpunish.warn` | helper | false | Warn players. |
 | `mrpunish.mute` | helper | false | Mute players. |

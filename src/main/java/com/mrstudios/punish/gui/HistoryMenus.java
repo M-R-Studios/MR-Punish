@@ -103,6 +103,8 @@ public final class HistoryMenus {
         final Consumer<Player> back;
         /** Bumped by every open: only the newest requested page is ever shown. */
         int generation;
+        /** Whether this view's opening was logged ({@code logs.log-history-views}): once per view. */
+        boolean logged;
 
         public View(UUID targetUuid, String targetName, int page, Consumer<Player> back) {
             this.targetUuid = targetUuid;
@@ -271,7 +273,49 @@ public final class HistoryMenus {
                         return;
                     }
                     view.page = loaded.page();
+                    logView(viewer, view);
                     new HistoryMenu(viewer, view, loaded, filter).open(viewer);
+                }));
+    }
+
+    /** Logs INSPECT_HISTORY once per view when {@code logs.log-history-views} is on (not your own). */
+    private void logView(Player viewer, View view) {
+        if (view.logged || !state().settings().logs().logHistoryViews()
+                || viewer.getUniqueId().equals(view.targetUuid)) {
+            return;
+        }
+        view.logged = true;
+        plugin.logAction(viewer, "INSPECT_HISTORY", view.targetUuid, view.targetName, null, null);
+    }
+
+    /**
+     * Opens the detail of punishment {@code id} in {@code view}'s history (a staff log entry). If it
+     * isn't in that history any more, the history itself opens.
+     */
+    public void openDetail(Player viewer, View view, long id) {
+        int generation = ++view.generation;
+        load(view.targetUuid, view.targetName, HistoryFilter.ALL, 0, 100_000).whenComplete((loaded, error) ->
+                plugin.getServer().getScheduler().runTask(plugin, () -> {
+                    if (!viewer.isOnline() || generation != view.generation) {
+                        return;
+                    }
+                    if (error != null) {
+                        messages().send(viewer, "general.storage-unavailable");
+                        return;
+                    }
+                    if (!viewer.hasPermission(PERMISSION)) {
+                        denied(viewer, "general.no-permission");
+                        viewer.closeInventory();
+                        return;
+                    }
+                    Punishment found = loaded.entries().stream().filter(p -> p.id() == id).findFirst().orElse(null);
+                    if (found == null) {
+                        open(viewer, view);
+                        return;
+                    }
+                    logView(viewer, view);
+                    view.page = 0;
+                    new DetailMenu(viewer, view, found, loaded).open(viewer);
                 }));
     }
 

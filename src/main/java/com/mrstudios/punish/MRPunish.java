@@ -116,11 +116,15 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
     private VanishService vanish;
     private FreezeService freeze;
     private StaffModeService staffMode;
+    private com.mrstudios.punish.staff.StaffLogFile staffLogFile;
     private InspectMenus inspect;
     private PunishMenus menus;
     private HistoryMenus history;
     private ReportService reports;
     private ReportMenus reportMenus;
+    private com.mrstudios.punish.gui.StaffMenus staffMenus;
+    private com.mrstudios.punish.gui.StaffLogMenus staffLogMenus;
+    private com.mrstudios.punish.staff.StaffProfile staffProfile;
     /** {@code bedrock.floodgate} as at startup (changing it needs a restart). */
     private boolean floodgateSetting;
     private IpFeatures ip;
@@ -150,6 +154,7 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
                 new HistoryCommand(this), new ReportCommand(this), new ReportsCommand(this)));
         switchable.addAll(new StaffCommands(this).all());
         switchable.addAll(new FreezeCommands(this).all());
+        switchable.addAll(new com.mrstudios.punish.command.StaffHubCommands(this).all());
         Set<String> reserved = new HashSet<>(AdminCommand.ALIASES);
         reserved.add(AdminCommand.LABEL);
 
@@ -416,13 +421,16 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
         }
         storage.executor().transaction("running the daily clean-up",
                 c -> new Retention(storage.database()).run(c, System.currentTimeMillis(),
-                        ip.enabled() ? state.settings().ip().retentionDays() : 0))
+                        ip.enabled() ? state.settings().ip().retentionDays() : 0, state.settings().logs().retentionDays()))
                 .thenAccept(deleted -> {
                     int total = deleted.values().stream().mapToInt(Integer::intValue).sum();
                     if (total > 0) {
                         getLogger().info("Daily clean-up removed " + deleted + " old row(s).");
                     }
                 });
+        if (staffLogFile != null) {
+            staffLogFile.prune();
+        }
     }
 
     /** Menus, their item guard and text prompts (DESIGN.md 10.1, 12.2). */
@@ -469,6 +477,9 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
         getServer().getPluginManager().registerEvents(freeze, this);
         freeze.enableOnline();
         getServer().getScheduler().runTaskTimer(this, freeze::tick, 20L, 20L);
+        staffLogFile = new com.mrstudios.punish.staff.StaffLogFile(getDataFolder().toPath(), storage, () -> state,
+                getLogger());
+        getServer().getScheduler().runTaskTimer(this, staffLogFile::poll, 20L, 60L);
         staffMode = new StaffModeService(this, items);
         getServer().getPluginManager().registerEvents(staffMode, this);
         staffMode.enableOnline();
@@ -486,6 +497,9 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
         reports.listener(notices);
         getServer().getPluginManager().registerEvents(notices, this);
         reportMenus = new ReportMenus(this, items, prompts);
+        staffMenus = new com.mrstudios.punish.gui.StaffMenus(this, items, prompts);
+        staffLogMenus = new com.mrstudios.punish.gui.StaffLogMenus(this, items);
+        staffProfile = new com.mrstudios.punish.staff.StaffProfile(this);
         // Every minute: release expired claims, and remind staff of open reports when it's time.
         getServer().getScheduler().runTaskTimer(this, notices::tick, 20L * 60, 20L * 60);
         reports.refreshOpenCount();
@@ -493,6 +507,20 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
 
     public ReportService reports() {
         return reports;
+    }
+
+    public com.mrstudios.punish.gui.StaffMenus staffMenus() {
+        return staffMenus;
+    }
+
+    public com.mrstudios.punish.gui.StaffLogMenus staffLogMenus() {
+        return staffLogMenus;
+    }
+
+    /** {@code /mrpunish staff <player>} (DESIGN.md 11.7). */
+    @Override
+    public void staffProfile(CommandSender sender, String name) {
+        staffProfile.show(sender, name);
     }
 
     public ReportMenus reportMenus() {
@@ -509,6 +537,33 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
 
     public StaffChat staffChat() {
         return staffChat;
+    }
+
+    /**
+     * Logs a staff action that isn't part of a transaction (DESIGN.md 13.6): a separate async insert;
+     * if it fails, the action itself stands and the console says so.
+     *
+     * @param actor null for the console
+     */
+    public void logAction(Player actor, String action, UUID targetUuid, String targetName, Long refId, String details) {
+        if (storage == null || storage.executor().isShutDown() || !storage.health().isUp()) {
+            getLogger().warning("Couldn't log " + action + " by " + (actor == null ? "console" : actor.getName())
+                    + ": the database is unavailable.");
+            return;
+        }
+        long now = System.currentTimeMillis();
+        String server = state.settings().effectiveServerName();
+        UUID actorUuid = actor == null ? null : actor.getUniqueId();
+        String actorName = actor == null ? state.messages().raw("general.console-name") : actor.getName();
+        storage.executor().submit("logging " + action, c -> {
+            new com.mrstudios.punish.storage.ActionRepo(storage.database()).insert(c,
+                    new com.mrstudios.punish.storage.ActionRepo.Action(now, server, actorUuid, actorName, action,
+                            targetUuid, targetName, refId, details));
+            return null;
+        }).exceptionally(e -> {
+            getLogger().warning("Couldn't log " + action + " by " + actorName + ": " + e.getMessage());
+            return null;
+        });
     }
 
     /** {@code /mrpunish forceexit <player>}: ends their staff mode and vanish, with authority over them. */
@@ -536,12 +591,19 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
             return;
         }
         state.messages().send(sender, "staff.forceexit-done", Placeholder.unparsed("player", target.getName()));
+        logAction(sender instanceof Player p ? p : null, "FORCE_EXIT", target.getUniqueId(), target.getName(), null,
+                (left ? "staff mode" : "") + (left && wasVanished ? " and " : "") + (wasVanished ? "vanish" : ""));
         state.messages().send(target, "staff.staffmode-forced", Placeholder.unparsed("staff", actor.name()));
     }
 
     /** The server's TPS over 1 minute (the staff scoreboard). Overridable for tests. */
     public double tps() {
         return getServer().getTPS()[0];
+    }
+
+    /** The TPS over 1, 5 and 15 minutes (the /staff menu's server information). Overridable for tests. */
+    public double[] tpsAll() {
+        return getServer().getTPS();
     }
 
     /** The average tick time in ms (the staff scoreboard). Overridable for tests. */
@@ -602,6 +664,9 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
             for (Player player : getServer().getOnlinePlayers()) {
                 tracker.record(player);
             }
+        }
+        if (staffLogFile != null) {
+            staffLogFile.close();
         }
         storage.shutdown(STORAGE_DRAIN_MS);
     }
@@ -781,6 +846,9 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
         if (!console) {
             getLogger().info(sender.getName() + " reloaded MR-Punish.");
         }
+        logAction(sender instanceof Player p ? p : null, "RELOAD", null, null, null,
+                loaded.failures().isEmpty() ? (loaded.warnings().isEmpty() ? "ok" : loaded.warnings().size() + " warning(s)")
+                        : "failed: " + String.join(", ", loaded.failures().keySet()));
         for (ReloadReport.Line line : ReloadReport.lines(loaded, restartNeeded)) {
             Component text = line.name() == null
                     ? messages.component(line.key())

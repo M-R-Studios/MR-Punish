@@ -84,7 +84,8 @@ public final class StaffModeService implements Listener {
     public enum Tool {
         TELEPORT("teleport", PERMISSION), RANDOM("random", PERMISSION), INSPECT("inspect", InspectMenus.INVSEE),
         FREEZE("freeze", FreezeService.PERMISSION), PUNISH("punish", "mrpunish.punish"),
-        VANISH("vanish", VanishService.USE), REPORTS("reports", ReportService.REPORTS);
+        VANISH("vanish", VanishService.USE), REPORTS("reports", ReportService.REPORTS),
+        HUB("hub", com.mrstudios.punish.command.Perms.STAFF);
 
         final String id;
         final String permission;
@@ -231,8 +232,8 @@ public final class StaffModeService implements Listener {
         return item;
     }
 
-    /** The vanish tool shows the current state. */
-    private void refreshVanishTool(Player p) {
+    /** The vanish tool shows the current state (after any vanish toggle). */
+    public void refreshVanishTool(Player p) {
         if (!inStaffMode(p.getUniqueId()) || !p.hasPermission(VanishService.USE)) {
             return;
         }
@@ -474,10 +475,12 @@ public final class StaffModeService implements Listener {
             case RANDOM -> randomTeleport(p);
             case VANISH -> {
                 boolean now = plugin.vanish().toggle(p);
+                plugin.logAction(p, now ? "VANISH_ON" : "VANISH_OFF", p.getUniqueId(), p.getName(), null, null);
                 state().messages().send(p, now ? "staff.vanish-on" : "staff.vanish-off");
                 refreshVanishTool(p);
             }
             case REPORTS -> plugin.reportMenus().openList(p, new ReportMenus.View(ReportRepo.Filter.OPEN));
+            case HUB -> plugin.staffMenus().openHub(p);
             default -> { } // used on a player
         }
     }

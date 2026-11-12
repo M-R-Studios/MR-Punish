@@ -42,7 +42,7 @@ class GuiLoaderTest {
     void badValuesFallBackToTheJarsWithAWarning() throws Exception {
         String text = resource("gui.yml")
                 .replace("  mode: GREY", "  mode: SHOW")
-                .replace("  close-slot: 40", "  close-slot: 50")
+                .replaceFirst("  close-slot: 40", "  close-slot: 50")
                 .replace("  item: { material: GRAY_DYE,", "  item: { material: NOT_AN_ITEM,");
         LoadResult<GuiSettings> result = new GuiLoader(m -> !m.equals("NOT_AN_ITEM"), k -> true,
                 GuiLoader.bundledDefaults()).load(text);

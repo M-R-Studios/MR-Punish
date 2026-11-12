@@ -40,6 +40,41 @@ public final class PunishmentRepo {
         return database.table("punishments");
     }
 
+    /** How many punishments of {@code type} are in force now (the /staff menu's server information). */
+    public int countActive(Connection c, PunishmentType type, long now) throws SQLException {
+        try (PreparedStatement s = c.prepareStatement("SELECT COUNT(*) FROM " + table()
+                + " WHERE type = ? AND status = 'ACTIVE' AND (expires_at IS NULL OR expires_at > ?)")) {
+            s.setString(1, type.name());
+            s.setLong(2, now);
+            try (ResultSet r = s.executeQuery()) {
+                return r.next() ? r.getInt(1) : 0;
+            }
+        }
+    }
+
+    /**
+     * Punishments {@code issuer} issued at or after {@code since}, by type (the staff profile). Every
+     * one counts, whatever happened to it later.
+     */
+    public java.util.Map<PunishmentType, Integer> issuedBy(Connection c, UUID issuer, long since) throws SQLException {
+        java.util.Map<PunishmentType, Integer> counts = new java.util.EnumMap<>(PunishmentType.class);
+        try (PreparedStatement s = c.prepareStatement("SELECT type, COUNT(*) FROM " + table()
+                + " WHERE issuer_uuid = ? AND issued_at >= ? GROUP BY type")) {
+            s.setString(1, issuer.toString());
+            s.setLong(2, since);
+            try (ResultSet r = s.executeQuery()) {
+                while (r.next()) {
+                    try {
+                        counts.put(PunishmentType.valueOf(r.getString(1)), r.getInt(2));
+                    } catch (IllegalArgumentException unknown) {
+                        // A type from a newer version: not counted.
+                    }
+                }
+            }
+        }
+        return counts;
+    }
+
     /**
      * Whose punishments a query is about: an account (WARN, MUTE, BAN) or an IP hash (IP types),
      * so alts share one IP ladder and one IP slot (DESIGN.md 7.3, 8.3).

@@ -390,6 +390,18 @@ staff-chat:
   # Messages starting with this go to staff chat (for players with mrpunish.staffchat). "" = off.
   prefix: "#"
 
+logs:
+  file:
+    # Also write staff actions to plugins/MR-Punish/logs/staff-YYYY-MM-DD.log.
+    enabled: true
+    # Delete log files older than this many days. 0 = keep forever.
+    keep-days: 30
+  # Delete staff action log entries in the database older than this many days. 0 = keep forever.
+  # Punishment and report records are never deleted, whatever this says.
+  retention-days: 0
+  # Also log opening someone's /history as an inspection.
+  log-history-views: false
+
 bedrock:
   # Use Floodgate (if installed) to show Bedrock players a form for typing text instead of chat.
   # Changing this needs a restart.
@@ -409,6 +421,8 @@ commands:
   sc: { enabled: true, aliases: [] }
   stafflist: { enabled: true, aliases: [] }
   vanish: { enabled: true, aliases: [v] }
+  staff: { enabled: true, aliases: [] }
+  stafflog: { enabled: true, aliases: [] }
   staffmode: { enabled: true, aliases: [sm] }
   freeze: { enabled: true, aliases: [] }
   unfreeze: { enabled: true, aliases: [] }

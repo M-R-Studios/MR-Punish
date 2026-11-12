@@ -50,7 +50,7 @@ public final class PunishMenuCommand implements CommandRegistry.Switchable {
         return 0;
     }
 
-    int run(CommandSender sender, String player) {
+    public int run(CommandSender sender, String player) {
         if (!(sender instanceof Player viewer)) {
             shared.messages().send(sender, "general.player-only");
             return 0;

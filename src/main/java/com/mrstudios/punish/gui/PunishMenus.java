@@ -260,8 +260,8 @@ public final class PunishMenus {
 
     // ---- /punish <player> ----
 
-    /** What the head shows, from one query. */
-    record HeadData(Optional<PlayerRepo.PlayerRecord> record, List<Punishment> punishments) {
+    /** What the head shows, from one query. {@code reports}: reports against them, {total, open or claimed}. */
+    record HeadData(Optional<PlayerRepo.PlayerRecord> record, List<Punishment> punishments, int[] reports) {
     }
 
     final class MainMenu extends MenuHolder {
@@ -371,7 +371,8 @@ public final class PunishMenus {
             UUID target = flow.targetUuid;
             plugin.storage().executor().submit("loading the punish menu for " + flow.targetName, c -> new HeadData(
                     new PlayerRepo(plugin.storage().database()).byUuid(c, target),
-                    plugin.history().all(c, target, System.currentTimeMillis())))
+                    plugin.history().all(c, target, System.currentTimeMillis()),
+                    new com.mrstudios.punish.storage.ReportRepo(plugin.storage().database()).against(c, target)))
                     .whenComplete((loaded, error) -> plugin.getServer().getScheduler().runTask(plugin, () -> {
                         loading = false;
                         if (error != null) {
@@ -379,7 +380,7 @@ public final class PunishMenus {
                             if (viewer != null && isShowing()) {
                                 messages().send(viewer, "general.storage-unavailable");
                             }
-                            data = new HeadData(Optional.empty(), List.of());
+                            data = new HeadData(Optional.empty(), List.of(), new int[] {0, 0});
                         } else {
                             data = loaded;
                         }
@@ -423,7 +424,9 @@ public final class PunishMenus {
                     Placeholder.parsed("status", status),
                     Placeholder.parsed("rank", rank),
                     Placeholder.unparsed("active", String.valueOf(activeTotal)),
-                    Placeholder.unparsed("total", String.valueOf(data.punishments().size()))),
+                    Placeholder.unparsed("total", String.valueOf(data.punishments().size())),
+                    Placeholder.unparsed("reports", String.valueOf(data.reports()[0])),
+                    Placeholder.unparsed("reports-open", String.valueOf(data.reports()[1]))),
                     Map.of("previous", previous));
         }
     }

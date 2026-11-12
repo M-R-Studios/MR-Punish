@@ -9,8 +9,8 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * The daily clean-up (DESIGN.md 9.5). Punishments, reports, report notes and players are never
- * deleted. The settings-driven parts (IP links, staff log, log files) are added with the features
- * that write them.
+ * deleted. IP links and staff log rows go after their configured days; log files are pruned by
+ * the file log itself.
  */
 public final class Retention {
 
@@ -35,7 +35,17 @@ public final class Retention {
      *                        also 0 while IP features are off, when the links are purged at startup instead)
      */
     public Map<String, Integer> run(Connection c, long now, int ipRetentionDays) throws SQLException {
+        return run(c, now, ipRetentionDays, 0);
+    }
+
+    /** @param logRetentionDays {@code logs.retention-days}: staff log rows older are deleted (0 = keep) */
+    public Map<String, Integer> run(Connection c, long now, int ipRetentionDays, int logRetentionDays)
+            throws SQLException {
         Map<String, Integer> deleted = new LinkedHashMap<>();
+        if (logRetentionDays > 0) {
+            deleted.put("staff_actions", new ActionRepo(database).deleteOlderThan(c,
+                    now - TimeUnit.DAYS.toMillis(logRetentionDays)));
+        }
         if (ipRetentionDays > 0) {
             deleted.put("player_ips", new IpRepo(database).deleteOlderThan(c,
                     now - TimeUnit.DAYS.toMillis(ipRetentionDays)));

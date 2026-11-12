@@ -78,7 +78,7 @@ public final class StaffCommands {
                 .executes(ctx -> toggleStaffChat(ctx.getSource().getSender())));
     }
 
-    int toggleStaffChat(CommandSender sender) {
+    public int toggleStaffChat(CommandSender sender) {
         if (!(sender instanceof Player player)) {
             shared.messages().send(sender, "general.player-only");
             return 0;
@@ -163,7 +163,7 @@ public final class StaffCommands {
                 .executes(ctx -> toggleStaffMode(ctx.getSource().getSender())));
     }
 
-    int toggleStaffMode(CommandSender sender) {
+    public int toggleStaffMode(CommandSender sender) {
         if (!(sender instanceof Player player)) {
             shared.messages().send(sender, "general.player-only");
             return 0;
@@ -200,7 +200,7 @@ public final class StaffCommands {
                                 StringArgumentType.getString(ctx, "player")))));
     }
 
-    int vanishSelf(CommandSender sender) {
+    public int vanishSelf(CommandSender sender) {
         if (!(sender instanceof Player player)) {
             shared.messages().send(sender, "general.player-only");
             return 0;
@@ -208,7 +208,10 @@ public final class StaffCommands {
         if (refuse(sender, VanishService.USE)) {
             return 0;
         }
-        shared.messages().send(player, plugin.vanish().toggle(player) ? "staff.vanish-on" : "staff.vanish-off");
+        boolean now = plugin.vanish().toggle(player);
+        plugin.staffMode().refreshVanishTool(player);
+        shared.messages().send(player, now ? "staff.vanish-on" : "staff.vanish-off");
+        plugin.logAction(player, now ? "VANISH_ON" : "VANISH_OFF", player.getUniqueId(), player.getName(), null, null);
         return Command.SINGLE_SUCCESS;
     }
 
@@ -236,6 +239,8 @@ public final class StaffCommands {
             return 0;
         }
         boolean now = plugin.vanish().toggle(target);
+        plugin.logAction(sender instanceof Player p ? p : null, now ? "VANISH_ON" : "VANISH_OFF", target.getUniqueId(),
+                target.getName(), null, null);
         shared.messages().send(sender, now ? "staff.vanish-other-on" : "staff.vanish-other-off",
                 Placeholder.unparsed("player", target.getName()));
         shared.messages().send(target, now ? "staff.vanish-by-other-on" : "staff.vanish-by-other-off",

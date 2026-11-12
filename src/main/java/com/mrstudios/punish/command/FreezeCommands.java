@@ -85,7 +85,7 @@ public final class FreezeCommands {
         return target;
     }
 
-    int freeze(CommandSender sender, String name) {
+    public int freeze(CommandSender sender, String name) {
         if (refuse(sender, FreezeService.PERMISSION)) {
             return 0;
         }
@@ -163,11 +163,11 @@ public final class FreezeCommands {
         return Command.SINGLE_SUCCESS;
     }
 
-    int invsee(CommandSender sender, String name) {
+    public int invsee(CommandSender sender, String name) {
         return inspect(sender, name, InspectMenus.INVSEE, false);
     }
 
-    int endersee(CommandSender sender, String name) {
+    public int endersee(CommandSender sender, String name) {
         return inspect(sender, name, InspectMenus.ENDERSEE, true);
     }
 }

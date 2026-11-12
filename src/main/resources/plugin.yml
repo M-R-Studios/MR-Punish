@@ -16,6 +16,7 @@ softdepend: [LuckPerms, floodgate]
 #   sc <message>; staffchat; stafflist; vanish (alias v) [player]
 #   freeze <player>; unfreeze <player>; invsee <player>; endersee <player>
 #   staffmode (alias sm); mrpunish forceexit <player>
+#   staff (the staff menu); stafflog [staff] [page]; mrpunish staff <player>
 #   ban <player> [-s] <reason> [note...]
 #   unban <player> [reason...]
 #   warn <player> [-s] <reason> [note...]

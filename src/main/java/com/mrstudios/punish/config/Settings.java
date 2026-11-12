@@ -36,7 +36,7 @@ public record Settings(TimeSpan historyPeriod, ReasonRegistry reasons, Map<Strin
         boolean luckperms, SoundSetting notifySound, Display display, Login login, boolean banKickOnline,
         int maxTextLength, SoundSetting punishedSound, SoundSetting failedSound, boolean warnTitle, Mute mute,
         SoundSetting warnedSound, Ip ip, Input input, boolean floodgate, Reports reports,
-        Vanish vanish, StaffChat staffChat, Freeze freeze, StaffMode staffMode) {
+        Vanish vanish, StaffChat staffChat, Freeze freeze, StaffMode staffMode, Logs logs) {
 
     public Settings {
         commands = Map.copyOf(commands);
@@ -209,5 +209,14 @@ public record Settings(TimeSpan historyPeriod, ReasonRegistry reasons, Map<Strin
      */
     public record StaffMode(org.bukkit.GameMode gameMode, boolean vanish, boolean allowBuild, boolean allowPickup,
             boolean allowContainers, boolean scoreboard, ExitLocation exitLocation) {
+    }
+
+    /**
+     * {@code logs.*} (DESIGN.md 13.6, 9.5).
+     *
+     * @param fileKeepDays  0 = keep log files forever
+     * @param retentionDays 0 = keep staff_actions rows forever
+     */
+    public record Logs(boolean fileEnabled, int fileKeepDays, int retentionDays, boolean logHistoryViews) {
     }
 }

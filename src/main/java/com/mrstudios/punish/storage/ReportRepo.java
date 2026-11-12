@@ -252,6 +252,34 @@ public final class ReportRepo {
         }
     }
 
+    /** Reports about {@code target}: {@code {total, open or claimed}} (the punish head, DESIGN.md 13.5). */
+    public int[] against(Connection c, UUID target) throws SQLException {
+        try (PreparedStatement s = c.prepareStatement("SELECT COUNT(*), COALESCE(SUM(CASE WHEN status IN ('OPEN',"
+                + " 'CLAIMED') THEN 1 ELSE 0 END), 0) FROM " + reports() + " WHERE target_uuid = ?")) {
+            s.setString(1, target.toString());
+            try (ResultSet r = s.executeQuery()) {
+                return r.next() ? new int[] {r.getInt(1), r.getInt(2)} : new int[] {0, 0};
+            }
+        }
+    }
+
+    /** How many reports are CLAIMED (the /staff menu). */
+    public int countClaimed(Connection c) throws SQLException {
+        try (PreparedStatement s = c.prepareStatement("SELECT COUNT(*) FROM " + reports()
+                + " WHERE status = 'CLAIMED'")) {
+            return count(s);
+        }
+    }
+
+    /** How many reports {@code staff} resolved or rejected (the staff profile). */
+    public int handledBy(Connection c, UUID staff) throws SQLException {
+        try (PreparedStatement s = c.prepareStatement("SELECT COUNT(*) FROM " + reports()
+                + " WHERE closed_by_uuid = ? AND status IN ('RESOLVED', 'REJECTED')")) {
+            s.setString(1, staff.toString());
+            return count(s);
+        }
+    }
+
     private static int count(PreparedStatement s) throws SQLException {
         try (ResultSet r = s.executeQuery()) {
             return r.next() ? r.getInt(1) : 0;

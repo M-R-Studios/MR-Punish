@@ -43,7 +43,7 @@ public final class SettingsLoader {
     private static final Set<String> TOP_LEVEL = Set.of("config-version", "escalation", "fallback-reasons", "reasons",
             "commands", "storage", "server-name", "warnings", "announcements", "hooks", "sounds", "date-format",
             "time-zone", "appeal-link", "ban", "login", "input", "mute", "ip", "bedrock", "reports", "vanish",
-            "staff-chat", "freeze", "staff-mode");
+            "staff-chat", "freeze", "staff-mode", "logs");
     private static final Set<String> REASON_FIELDS = Set.of("type", "display", "description", "icon", "slot", "aliases",
             "escalation", "history-period", "permission", "enabled");
     private static final Set<String> TOGGLE_FIELDS = Set.of("enabled", "aliases");
@@ -291,6 +291,11 @@ public final class SettingsLoader {
                 r.bool("staff-mode.allow-build", false), r.bool("staff-mode.allow-pickup", false),
                 r.bool("staff-mode.allow-containers", true), r.bool("staff-mode.scoreboard", true),
                 r.choice("staff-mode.exit-location", Settings.ExitLocation.class, Settings.ExitLocation.STAY));
+        Settings.Logs logs = new Settings.Logs(r.bool("logs.file.enabled", true),
+                r.wholeNumber("logs.file.keep-days", 0, 36_500, 30), r.wholeNumber("logs.retention-days", 0, 36_500, 0),
+                r.bool("logs.log-history-views", false));
+        warnUnknownIn(yaml, "logs", Set.of("file", "retention-days", "log-history-views"), warnings);
+        warnUnknownIn(yaml, "logs.file", Set.of("enabled", "keep-days"), warnings);
         warnUnknownIn(yaml, "staff-mode", Set.of("gamemode", "vanish", "allow-build", "allow-pickup",
                 "allow-containers", "scoreboard", "exit-location"), warnings);
         warnUnknownIn(yaml, "reports", Set.of("cooldown-seconds", "max-open-per-player", "allow-reporting-staff",
@@ -298,7 +303,7 @@ public final class SettingsLoader {
 
         return LoadResult.loaded(new Settings(historyPeriod, registry, commands, storage, serverName, activeFor,
                 announcements, luckperms, notify, display, login, kickOnline, maxText, punished, failed, warnTitle,
-                mute, warned, ip, input, floodgate, reports, vanish, staffChat, freeze, staffMode), warnings);
+                mute, warned, ip, input, floodgate, reports, vanish, staffChat, freeze, staffMode, logs), warnings);
     }
 
     /** {@code reports.reasons}: key -> display and icon. A bad entry is skipped with a warning. */

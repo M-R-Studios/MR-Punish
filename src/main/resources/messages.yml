@@ -63,6 +63,9 @@ input:
   form-title-report: "Report reason"
   form-title-report-note: "Report note"
   form-title-decision: "Decision note"
+  form-title-search: "Player name"
+  # The /staff menu's "Search by name".
+  prompt-search: "<prefix><gray>Type a player name in chat, or <white><cancel-word></white>."
   form-label: "Type here"
 
 # A punishment's status as shown in /history (menu and console).
@@ -148,6 +151,20 @@ staff:
   tool-random-none: "<prefix><gray>There is no other player to teleport to."
   tool-teleported: "<prefix><gray>Teleported to <white><player></white>."
   # /mrpunish forceexit <player>
+  # /mrpunish staff <player>. <p30>/<ptotal>: punishments issued in 30 days / ever; <w> <m> <b> <ip> by type
+  # (ever; <ip-punishments> is IP mutes and IP bans); <reports>: reports resolved or rejected. <forceexit-click>...</forceexit-click> runs the force exit.
+  profile:
+    - "<prefix><white><player></white> <gray>(<rank>)"
+    - "<gray>Punishments (30 days / total): <white><p30></white> / <white><ptotal></white> <gray>(warn <w>, mute <m>, ban <b>, IP <ip-punishments>)"
+    - "<gray>Reports handled: <white><reports>"
+    - "<gray>Last actions:"
+  profile-action: "<gray>  <date> <white><action></white> <target>"
+  profile-none: "<gray>  none"
+  profile-buttons: "<forceexit-click><yellow>[end <player>'s staff mode and vanish]</yellow></forceexit-click>"
+  # /stafflog for console: a header, then 10 lines a page.
+  stafflog-header: "<prefix><white>Staff log<gray> (<filter>): page <page>/<pages>"
+  stafflog-line: "<gray><date> <white><actor></white> <yellow><action></yellow> <white><target></white> <gray><details>"
+  stafflog-empty: "<prefix><gray>No staff actions."
   forceexit-done: "<prefix><green><player> is out of staff mode and vanish."
   forceexit-none: "<prefix><red><player> isn't in staff mode or vanished."
   forceexit-rank: "<prefix><red>You can't force <player> out: their rank is equal to or higher than yours."
@@ -286,6 +303,7 @@ admin:
     version: "<prefix><white>/mrpunish version</white> <gray>- version, storage and command clashes"
     import: "<prefix><white>/mrpunish import vanilla [--clear]</white> <gray>- import the vanilla ban list"
     forceexit: "<prefix><white>/mrpunish forceexit [player]</white> <gray>- end someone's staff mode and vanish"
+    staff: "<prefix><white>/mrpunish staff [player]</white> <gray>- a staff member's profile"
   # Shown instead when the sender can't use any of the commands above.
   help-none: "<prefix><gray>There are no MR-Punish commands you can use."
   # <version>: MR-Punish version. <server>: server software and Minecraft version.
