@@ -47,6 +47,36 @@ public final class CommandClashCheck {
         return clashes;
     }
 
+    /**
+     * Who owns {@code label}: null if MR-Punish's node runs it in the dispatcher (whatever the
+     * command map says), else the command map's owner. Pure.
+     */
+    public static String owner(boolean oursInDispatcher, String commandMapOwner) {
+        return oursInDispatcher ? null : commandMapOwner;
+    }
+
+    /**
+     * Whether a {@code commands.yml} alias runs MR-Punish: every command it runs is
+     * {@code <namespace>:...} (the fix the clash warning suggests). Pure.
+     *
+     * @param targets the alias's command lines, e.g. {@code "mr-punish:v $1-"}; null when there's no alias
+     */
+    public static boolean aliasPointsAt(String[] targets, String namespace) {
+        if (targets == null || targets.length == 0) {
+            return false;
+        }
+        for (String target : targets) {
+            String line = target.strip();
+            if (line.startsWith("/")) {
+                line = line.substring(1);
+            }
+            if (!line.toLowerCase(java.util.Locale.ROOT).startsWith(namespace + ":")) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     /** Who owns {@code label} in {@code map}: null if it's {@code plugin}'s or unknown. */
     public static String ownerIn(CommandMap map, Plugin plugin, String label) {
         Command command = map.getCommand(label);

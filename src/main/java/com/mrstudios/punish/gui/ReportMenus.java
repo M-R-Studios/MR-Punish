@@ -485,6 +485,18 @@ public final class ReportMenus {
             } else {
                 noPermission(g.number("report-detail.history.slot"), history, report.targetName());
             }
+            // Teleports: staff mode or vanish only, so a visible staff member never appears next to them.
+            ItemTemplate toLocation = g.item("report-detail.teleport-location");
+            ItemTemplate toTarget = g.item("report-detail.teleport-target");
+            if (viewer != null && viewer.hasPermission(com.mrstudios.punish.staff.StaffModeService.PERMISSION)) {
+                set(g.number("report-detail.teleport-location.slot"), items.build(toLocation, TagResolver.resolver(
+                        target, Placeholder.unparsed("location", location))), (p, click) -> teleport(p, null));
+                set(g.number("report-detail.teleport-target.slot"), items.build(toTarget, target),
+                        (p, click) -> teleport(p, report.targetUuid()));
+            } else {
+                noPermission(g.number("report-detail.teleport-location.slot"), toLocation, report.targetName());
+                noPermission(g.number("report-detail.teleport-target.slot"), toTarget, report.targetName());
+            }
             // Latest notes.
             List<Integer> noteSlots = g.slots("report-detail.note-slots");
             for (int i = 0; i < detail.notes().size() && i < noteSlots.size(); i++) {
@@ -509,6 +521,36 @@ public final class ReportMenus {
                         MINI.stripTags(button.name().replace("<target>", MINI.escapeTags(targetName))))),
                         (p, click) -> denied(p, "general.no-permission"));
             }
+        }
+
+        /** To the report's location ({@code target} null) or to the reported player, if they're online. */
+        private void teleport(Player p, UUID target) {
+            if (!p.hasPermission(com.mrstudios.punish.staff.StaffModeService.PERMISSION)) {
+                denied(p, "general.no-permission");
+                render();
+                return;
+            }
+            if (!plugin.staffMode().inStaffMode(p.getUniqueId()) && !plugin.vanish().isVanished(p.getUniqueId())) {
+                denied(p, "staff.report-teleport-visible");
+                return;
+            }
+            if (target == null) {
+                org.bukkit.World world = report.world() == null ? null : plugin.getServer().getWorld(report.world());
+                if (world == null || report.x() == null) {
+                    denied(p, "staff.report-teleport-no-location");
+                    return;
+                }
+                p.closeInventory();
+                p.teleport(new org.bukkit.Location(world, report.x() + 0.5, report.y(), report.z() + 0.5));
+                return;
+            }
+            Player online = plugin.getServer().getPlayer(target);
+            if (online == null) {
+                denied(p, "staff.report-teleport-offline", Placeholder.unparsed("player", report.targetName()));
+                return;
+            }
+            p.closeInventory();
+            p.teleport(online.getLocation());
         }
 
         private void act(Player p, CompletableFuture<Change> change, String doneKey) {

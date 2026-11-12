@@ -108,7 +108,7 @@ class AdminCommandTest {
 
         PlayerMock admin = player(Perms.STAFF, Perms.RELOAD, Perms.ADMIN);
         command.help(admin);
-        assertEquals(3, messages(admin).size());
+        assertEquals(4, messages(admin).size(), "reload, version and forceexit");
     }
 
     @Test

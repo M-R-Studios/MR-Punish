@@ -131,6 +131,30 @@ staff:
   stafflist-header: "<prefix><white>Online staff (<count>):"
   stafflist-line: "<gray>- <rank> <white><player></white><tags>"
   stafflist-tag-vanished: " <dark_gray>[vanished]"
+  # Shown to staff viewers only.
+  stafflist-tag-staffmode: " <dark_gray>[staff mode]"
+  staffmode-on: "<prefix><green>Staff mode on."
+  staffmode-off: "<prefix><gray>Staff mode off. Your inventory and state were restored."
+  staffmode-restored-join: "<prefix><yellow>You left staff mode unexpectedly last time. Your inventory and state were restored."
+  staffmode-forced: "<prefix><yellow><staff> took you out of staff mode."
+  # Staff mode can't start now (<why>).
+  staffmode-refused: "<prefix><red>You can't enter staff mode right now: <why>."
+  staffmode-why-frozen: "you are frozen"
+  staffmode-why-dead: "you are dead"
+  staffmode-why-vehicle: "get out of the vehicle first"
+  staffmode-why-full: "your inventory is full, make room for the item on your cursor"
+  staffmode-why-failed: "your state couldn't be saved"
+  # A staff mode tool was used.
+  tool-random-none: "<prefix><gray>There is no other player to teleport to."
+  tool-teleported: "<prefix><gray>Teleported to <white><player></white>."
+  # /mrpunish forceexit <player>
+  forceexit-done: "<prefix><green><player> is out of staff mode and vanish."
+  forceexit-none: "<prefix><red><player> isn't in staff mode or vanished."
+  forceexit-rank: "<prefix><red>You can't force <player> out: their rank is equal to or higher than yours."
+  # The report menu's teleport buttons only work in staff mode or vanished.
+  report-teleport-visible: "<prefix><red>Go into staff mode or vanish first, so you don't appear next to them."
+  report-teleport-offline: "<prefix><red><player> isn't online."
+  report-teleport-no-location: "<prefix><red>That report has no location."
   stafflist-none: "<prefix><gray>No staff online."
   vanish-on: "<prefix><green>You are now vanished."
   vanish-off: "<prefix><gray>You are visible again."
@@ -261,6 +285,7 @@ admin:
     reload: "<prefix><white>/mrpunish reload</white> <gray>- reload all configuration files"
     version: "<prefix><white>/mrpunish version</white> <gray>- version, storage and command clashes"
     import: "<prefix><white>/mrpunish import vanilla [--clear]</white> <gray>- import the vanilla ban list"
+    forceexit: "<prefix><white>/mrpunish forceexit [player]</white> <gray>- end someone's staff mode and vanish"
   # Shown instead when the sender can't use any of the commands above.
   help-none: "<prefix><gray>There are no MR-Punish commands you can use."
   # <version>: MR-Punish version. <server>: server software and Minecraft version.

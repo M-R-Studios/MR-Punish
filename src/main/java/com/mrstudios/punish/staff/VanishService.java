@@ -52,6 +52,12 @@ public final class VanishService implements Listener {
     private final Set<UUID> vanished = ConcurrentHashMap.newKeySet();
     private final Map<UUID, Boolean> sleepingBefore = new HashMap<>();
     private int reminderClock;
+    /** Told when someone becomes hidden or visible (EssentialsX). Main thread. */
+    private volatile java.util.function.BiConsumer<Player, Boolean> hiddenHook = (player, hidden) -> { };
+
+    public void onHiddenChange(java.util.function.BiConsumer<Player, Boolean> hook) {
+        this.hiddenHook = hook;
+    }
 
     public VanishService(Plugin plugin, Supplier<PluginState> state, RankCache ranks) {
         this.plugin = plugin;
@@ -143,6 +149,7 @@ public final class VanishService implements Listener {
             p.getPersistentDataContainer().set(key, PersistentDataType.BYTE, (byte) 1);
         }
         refreshTarget(p);
+        hiddenHook.accept(p, true);
     }
 
     public void unvanish(Player p) {
@@ -156,6 +163,7 @@ public final class VanishService implements Listener {
         for (Player viewer : plugin.getServer().getOnlinePlayers()) {
             viewer.showPlayer(plugin, p);
         }
+        hiddenHook.accept(p, false);
     }
 
     /** Toggles; returns whether {@code p} is vanished now. */
@@ -214,6 +222,8 @@ public final class VanishService implements Listener {
             plugin.getServer().getScheduler().runTask(plugin, () -> {
                 if (p.isOnline() && isVanished(p.getUniqueId())) {
                     state.get().messages().send(p, "staff.vanish-still");
+                    // Again after every join handler, in case another plugin reset it at join.
+                    hiddenHook.accept(p, true);
                 }
             });
         }
@@ -253,6 +263,7 @@ public final class VanishService implements Listener {
             p.setSleepingIgnored(sleeping != null && sleeping);
             if (!settings().persist()) {
                 p.getPersistentDataContainer().remove(key);
+                hiddenHook.accept(p, false);
             }
         }
     }
@@ -332,6 +343,7 @@ public final class VanishService implements Listener {
             for (Player viewer : plugin.getServer().getOnlinePlayers()) {
                 viewer.showPlayer(plugin, p);
             }
+            hiddenHook.accept(p, false);
         }
         vanished.clear();
     }

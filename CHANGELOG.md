@@ -42,5 +42,10 @@
 - `/freeze` and `/unfreeze` (also offline): a frozen player can look around and chat but not move, teleport, interact, use their inventory or fight; allowed commands are configurable. The freeze survives logout, restart and server switches; staff are told when a frozen player logs out, and `freeze.on-quit: BAN` bans them for it.
 - `/invsee` and `/endersee`: view-only live copies of a player's inventory and ender chest.
 
+- `/staffmode` (alias `/sm`): staff tools (teleport, random player, inspect, freeze wand, punish, vanish, reports), protection, the staff scoreboard (`scoreboard.yml`), and a full restore of inventory and state on exit, logout, kick, death, `/stop`, plugin disable and after a crash. `/mrpunish forceexit <player>` ends someone's staff mode and vanish; `/stafflist` shows who is in staff mode (to staff).
+- Report details: teleport to the report location or the reported player, in staff mode or vanished.
+- With EssentialsX, vanished players are hidden from Essentials' `/list` and AFK messages.
+
 ### Changed
 - `/mute` and `/ban` (and `/muteip`, `/banip`) from a player now open the confirmation menu instead of applying straight away; without a reason, `/warn`, `/mute` and `/ban` open the reason menu. Console is unchanged.
+- The startup command-clash warning now checks which command actually runs a label, and no longer warns about a `commands.yml` alias that points at MR-Punish.

@@ -30,6 +30,7 @@ import com.mrstudios.punish.command.FreezeCommands;
 import com.mrstudios.punish.command.StaffCommands;
 import com.mrstudios.punish.gui.InspectMenus;
 import com.mrstudios.punish.staff.FreezeService;
+import com.mrstudios.punish.staff.StaffModeService;
 import com.mrstudios.punish.staff.StaffChat;
 import com.mrstudios.punish.staff.VanishService;
 import com.mrstudios.punish.command.PunishMenuCommand;
@@ -114,6 +115,7 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
     private StaffChat staffChat;
     private VanishService vanish;
     private FreezeService freeze;
+    private StaffModeService staffMode;
     private InspectMenus inspect;
     private PunishMenus menus;
     private HistoryMenus history;
@@ -444,6 +446,20 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
         mutes.skipChatWhen(event -> prompts.waiting(event.getPlayer().getUniqueId()) || staffChat.claims(event));
         vanish = new VanishService(this, () -> state, rankCache);
         getServer().getPluginManager().registerEvents(vanish, this);
+        // EssentialsX enables after MR-Punish (no dependency either way), so it's looked up a tick later.
+        getServer().getScheduler().runTask(this, () -> {
+            com.mrstudios.punish.hook.EssentialsHook essentials =
+                    com.mrstudios.punish.hook.EssentialsHook.find(getServer().getPluginManager(), getLogger());
+            if (essentials != null) {
+                vanish.onHiddenChange(essentials::setHidden);
+                getLogger().info("Hooked into EssentialsX: vanished players are hidden from its /list and messages.");
+                for (Player online : getServer().getOnlinePlayers()) {
+                    if (vanish.isVanished(online.getUniqueId())) {
+                        essentials.setHidden(online, true);
+                    }
+                }
+            }
+        });
         vanish.enableOnline();
         // Again once every plugin has enabled (after a /reload): another plugin enabling after us
         // (EssentialsX does) may show everyone to everyone, which would reveal vanished players.
@@ -453,6 +469,10 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
         getServer().getPluginManager().registerEvents(freeze, this);
         freeze.enableOnline();
         getServer().getScheduler().runTaskTimer(this, freeze::tick, 20L, 20L);
+        staffMode = new StaffModeService(this, items);
+        getServer().getPluginManager().registerEvents(staffMode, this);
+        staffMode.enableOnline();
+        getServer().getScheduler().runTaskTimer(this, staffMode::tick, 1L, 1L);
         inspect = new InspectMenus(this, items);
         getServer().getPluginManager().registerEvents(inspect, this);
         getServer().getScheduler().runTaskTimer(this, inspect::tick, 10L, 10L);
@@ -491,6 +511,48 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
         return staffChat;
     }
 
+    /** {@code /mrpunish forceexit <player>}: ends their staff mode and vanish, with authority over them. */
+    @Override
+    public void forceExit(CommandSender sender, String name) {
+        Player target = getServer().getPlayerExact(name);
+        if (target == null) {
+            state.messages().send(sender, "staff.forceexit-none", Placeholder.unparsed("player", name));
+            return;
+        }
+        com.mrstudios.punish.rank.Authority.Standing actor = sender instanceof Player p ? rankCache.standing(p)
+                : com.mrstudios.punish.rank.Authority.Standing.console(state.messages().raw("general.console-name"));
+        if (!actor.isConsole() && com.mrstudios.punish.rank.Authority.check(actor, rankCache.standing(target),
+                com.mrstudios.punish.rank.Authority.Action.FORCE_EXIT) != com.mrstudios.punish.rank.Authority.Verdict.OK) {
+            state.messages().send(sender, "staff.forceexit-rank", Placeholder.unparsed("player", target.getName()));
+            return;
+        }
+        boolean left = staffMode.exit(target, StaffModeService.Cause.FORCED);
+        boolean wasVanished = vanish.isVanished(target.getUniqueId());
+        if (wasVanished) {
+            vanish.unvanish(target);
+        }
+        if (!left && !wasVanished) {
+            state.messages().send(sender, "staff.forceexit-none", Placeholder.unparsed("player", target.getName()));
+            return;
+        }
+        state.messages().send(sender, "staff.forceexit-done", Placeholder.unparsed("player", target.getName()));
+        state.messages().send(target, "staff.staffmode-forced", Placeholder.unparsed("staff", actor.name()));
+    }
+
+    /** The server's TPS over 1 minute (the staff scoreboard). Overridable for tests. */
+    public double tps() {
+        return getServer().getTPS()[0];
+    }
+
+    /** The average tick time in ms (the staff scoreboard). Overridable for tests. */
+    public double mspt() {
+        return getServer().getAverageTickTime();
+    }
+
+    public StaffModeService staffMode() {
+        return staffMode;
+    }
+
     public FreezeService freeze() {
         return freeze;
     }
@@ -511,6 +573,10 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
     public void onDisable() {
         if (prompts != null) {
             prompts.dropAll();
+        }
+        // First, so everyone gets their inventory and state back before anything else is undone.
+        if (staffMode != null) {
+            staffMode.disable();
         }
         // Nobody stays hidden while MR-Punish is off; vanish itself stays in the PDC (DESIGN.md 11.2).
         if (vanish != null) {
@@ -590,6 +656,10 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
         if (vanish != null) {
             vanish.refreshAll();
         }
+        // Someone who lost mrpunish.staffmode leaves staff mode (DESIGN.md 11.1).
+        if (staffMode != null) {
+            staffMode.checkPermissions();
+        }
     }
 
     /** Issues and removes punishments. Commands and menus arrive in later steps. */
@@ -655,7 +725,9 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
     private void checkClashes() {
         Map<String, Boolean> claimed = commands.claimed();
         clashes = CommandClashCheck.find(claimed.keySet(),
-                label -> CommandClashCheck.ownerIn(getServer().getCommandMap(), this, label));
+                label -> CommandClashCheck.owner(commands.ownsInDispatcher(label)
+                                || CommandClashCheck.aliasPointsAt(commandAliases().get(label), commands.namespace()),
+                        CommandClashCheck.ownerIn(getServer().getCommandMap(), this, label)));
         for (Clash clash : clashes) {
             getLogger().warning(CommandClashCheck.warning(clash, commands.namespace(), claimed.get(clash.label())));
         }

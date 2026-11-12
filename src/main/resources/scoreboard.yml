@@ -1,4 +1,26 @@
-# Staff mode scoreboard. MiniMessage. Its settings appear here once staff mode is added to MR-Punish.
+# Staff mode scoreboard (shown with staff-mode.scoreboard: true in config.yml). MiniMessage.
+# Lines are shown top to bottom (at most 15). Placeholders: <online>, <max>, <staff-online>,
+# <vanished>, <open-reports>, <frozen>, <tps>, <mspt>, <ping>, <world>, <x>, <y>, <z>,
+# <vanish-state>, <server>, <player>
 
 # Do not change. Used to upgrade this file automatically when the plugin updates.
 scoreboard-version: 1
+
+# How often the scoreboard is updated, in ticks (20 = 1 second). Range 10-200.
+update-ticks: 20
+title: "<gradient:#ef4444:#f97316><bold>Staff Mode"
+lines:
+  - "<dark_gray><st>                    "
+  - "<gray>Online: <white><online>/<max>"
+  - "<gray>Staff: <white><staff-online>"
+  - "<gray>Vanish: <vanish-state>"
+  - ""
+  - "<gray>Open reports: <yellow><open-reports>"
+  - "<gray>Frozen: <aqua><frozen>"
+  - ""
+  - "<gray>TPS: <white><tps> <dark_gray>(<mspt> ms)"
+  - "<gray>Ping: <white><ping> ms"
+  - "<dark_gray><st>                    "
+# <vanish-state>
+vanish-on: "<green>on"
+vanish-off: "<red>off"

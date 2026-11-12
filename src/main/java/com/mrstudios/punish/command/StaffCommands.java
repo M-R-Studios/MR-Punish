@@ -8,6 +8,7 @@ import com.mrstudios.punish.config.PluginState;
 import com.mrstudios.punish.rank.Authority;
 import com.mrstudios.punish.rank.RankDisplay;
 import com.mrstudios.punish.staff.StaffChat;
+import com.mrstudios.punish.staff.StaffModeService;
 import com.mrstudios.punish.staff.VanishService;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
@@ -66,7 +67,7 @@ public final class StaffCommands {
     }
 
     public List<CommandRegistry.Switchable> all() {
-        return List.of(staffchat(), sc(), stafflist(), vanish());
+        return List.of(staffchat(), sc(), stafflist(), vanish(), staffmode());
     }
 
     // ---- /staffchat ----
@@ -142,10 +143,47 @@ public final class StaffCommands {
                 String.valueOf(staff.size())));
         for (Player p : staff) {
             String tags = vanish.isVanished(p.getUniqueId()) ? s.messages().raw("staff.stafflist-tag-vanished") : "";
+            // Staff mode is shown to staff (and console) only.
+            if (plugin.staffMode().inStaffMode(p.getUniqueId())
+                    && (!(sender instanceof Player viewer) || viewer.hasPermission(Perms.STAFF))) {
+                tags += s.messages().raw("staff.stafflist-tag-staffmode");
+            }
             shared.messages().send(sender, "staff.stafflist-line",
                     Placeholder.parsed("rank", RankDisplay.of(s.ranks(), p::hasPermission, noRank)),
                     Placeholder.unparsed("player", p.getName()), Placeholder.parsed("tags", tags));
         }
+        return Command.SINGLE_SUCCESS;
+    }
+
+    // ---- /staffmode ----
+
+    CommandRegistry.Switchable staffmode() {
+        return command("staffmode", "Enter or leave staff mode.", literal -> Commands.literal(literal)
+                .requires(s -> s.getSender().hasPermission(StaffModeService.PERMISSION))
+                .executes(ctx -> toggleStaffMode(ctx.getSource().getSender())));
+    }
+
+    int toggleStaffMode(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            shared.messages().send(sender, "general.player-only");
+            return 0;
+        }
+        if (refuse(sender, StaffModeService.PERMISSION)) {
+            return 0;
+        }
+        StaffModeService service = plugin.staffMode();
+        if (service.inStaffMode(player.getUniqueId())) {
+            service.exit(player, StaffModeService.Cause.COMMAND);
+            shared.messages().send(player, "staff.staffmode-off");
+            return Command.SINGLE_SUCCESS;
+        }
+        String why = service.enter(player);
+        if (why != null) {
+            shared.messages().send(player, "staff.staffmode-refused",
+                    Placeholder.parsed("why", shared.messages().raw(why)));
+            return 0;
+        }
+        shared.messages().send(player, "staff.staffmode-on");
         return Command.SINGLE_SUCCESS;
     }
 

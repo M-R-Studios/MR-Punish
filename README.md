@@ -70,9 +70,15 @@ Staff with `mrpunish.reports` are told about each new report (click to open `/re
 
 ## Vanish
 
-`/vanish` (`mrpunish.vanish`) hides you from players without `mrpunish.vanish.see` and from staff of a lower rank; staff of your rank or higher still see you. `/vanish <player>` needs `mrpunish.vanish.others` and a higher rank, and only works on players who could make themselves visible again. While vanished there's no join or quit message (staff who can see you are told instead), you're left out of the server list and its player count, you can't pick up items or arrows, don't trigger pressure plates or tripwires, mobs ignore you and sleeping skips you; the action bar reminds you every `vanish.reminder-seconds`. MR-Punish sets the `vanished` metadata that many plugins read. EssentialsX doesn't use it: its `/list` and AFK messages still show a player vanished by MR-Punish. If you use EssentialsX, use one vanish system, not both.
+`/vanish` (`mrpunish.vanish`) hides you from players without `mrpunish.vanish.see` and from staff of a lower rank; staff of your rank or higher still see you. `/vanish <player>` needs `mrpunish.vanish.others` and a higher rank, and only works on players who could make themselves visible again. While vanished there's no join or quit message (staff who can see you are told instead), you're left out of the server list and its player count, you can't pick up items or arrows, don't trigger pressure plates or tripwires, mobs ignore you and sleeping skips you; the action bar reminds you every `vanish.reminder-seconds`. MR-Punish sets the `vanished` metadata that many plugins read, and with EssentialsX installed it also marks vanished players as hidden in Essentials, so its `/list` and AFK messages leave them out. Use one vanish system, not both: MR-Punish's `/vanish` or Essentials'.
 
 With `vanish.persist` you stay vanished across a relog or restart. Nobody can get stuck invisible: hiding isn't saved by the server, losing `mrpunish.vanish` makes you visible again (at once, or at your next join), and when MR-Punish is disabled everyone is shown again (enabling it vanishes those players again).
+
+## Staff mode
+
+`/staffmode` (alias `/sm`, `mrpunish.staffmode`) saves your whole state (inventory, armour, off-hand, game mode, flight, location, health, food, experience, effects, fire, air), clears your inventory and gives you the staff tools: a teleport compass (pick an online player), a random-player teleport, an inspect book (right-click a player for their inventory, sneak for their ender chest), a freeze wand, a punish axe, a vanish toggle and a reports book. You only get the tools you have the permission for. You fly, can't be hurt, don't get hungry, aren't targeted by mobs and are vanished (`staff-mode.vanish`); the staff scoreboard (`scoreboard.yml`) is shown. Tools can't be dropped, moved or placed; containers open but nothing can be taken (`staff-mode.allow-containers`), and building and pickup are off unless `allow-build` / `allow-pickup`.
+
+`/staffmode` again gives everything back exactly as it was, and so do logging out, a kick, `/stop` and disabling the plugin. If you die in staff mode nothing drops and you get everything back on respawn. The saved state is kept in your own player data, so after a crash your next join restores it ("You left staff mode unexpectedly last time"). Losing `mrpunish.staffmode` ends it within a minute. `/mrpunish forceexit <player>` (admins, with a higher rank) ends someone's staff mode and vanish. `/stafflist` shows "[staff mode]" to staff only. In a report's details, the teleport buttons (to the report location and to the reported player) work while you're in staff mode or vanished.
 
 ## Freeze
 
@@ -106,7 +112,7 @@ Anyone with a rank node automatically gets everything the rank grants, plus ever
 
 MR-Punish registers its commands through Paper's command system. Every command also works with the `mr-punish:` prefix (e.g. `/mr-punish:ban`), which helps if another plugin uses the same name. At startup, the console warns about any MR-Punish label that another plugin or a `commands.yml` alias owns, and `/mrpunish version` lists them.
 
-To give a label back to vanilla or another plugin, turn it off in `config.yml` (`commands.ban.enabled: false`, then restart): `/ban` is then the other command, and MR-Punish's stays available as `/mr-punish:ban`. **With EssentialsX**, also add an alias in the server's `commands.yml` (for example `ban: ["essentials:ban $1-"]`): by default EssentialsX hands its own command to any other plugin with the same name, which includes `/mr-punish:ban`, so without the alias `/ban` can still run MR-Punish's for a while after startup. To make a label that another plugin took point at MR-Punish instead, add an alias to the server's `commands.yml`, for example `ban: ["mr-punish:ban $1-"]`.
+To give a label back to vanilla or another plugin, turn it off in `config.yml` (`commands.ban.enabled: false`, then restart): `/ban` is then the other command, and MR-Punish's stays available as `/mr-punish:ban`. **With EssentialsX**, also add an alias in the server's `commands.yml` (for example `ban: ["essentials:ban $1-"]`), and the same the other way round: EssentialsX keeps labels like `/v` in its own name and passes them on to MR-Punish only by default, which the startup warning points out; `v: ["mr-punish:v $1-"]` makes `/v` MR-Punish's for sure (the warning then goes away): by default EssentialsX hands its own command to any other plugin with the same name, which includes `/mr-punish:ban`, so without the alias `/ban` can still run MR-Punish's for a while after startup. To make a label that another plugin took point at MR-Punish instead, add an alias to the server's `commands.yml`, for example `ban: ["mr-punish:ban $1-"]`.
 
 | Command | Permission | What it does |
 |---|---|---|
@@ -122,6 +128,8 @@ To give a label back to vanilla or another plugin, turn it off in `config.yml` (
 | `/staffchat` | `mrpunish.staffchat` | Sends all your chat to staff chat, or back. |
 | `/stafflist` | `mrpunish.stafflist` (everyone) | Online staff with rank. |
 | `/vanish [player]` (alias `/v`) | `mrpunish.vanish`; another player: `mrpunish.vanish.others` and a higher rank | Toggles vanish. |
+| `/staffmode` (alias `/sm`) | `mrpunish.staffmode` | Enters or leaves staff mode. |
+| `/mrpunish forceexit <player>` | `mrpunish.admin` and a higher rank | Ends someone's staff mode and vanish. |
 | `/freeze <player>` | `mrpunish.freeze` and a higher rank | Freezes an online player. |
 | `/unfreeze <player>` | `mrpunish.freeze` | Unfreezes, also an offline player. |
 | `/invsee <player>` | `mrpunish.invsee` | View-only live copy of an online player's inventory. |

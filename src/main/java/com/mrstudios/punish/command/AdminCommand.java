@@ -46,6 +46,10 @@ public final class AdminCommand {
             return "off";
         }
 
+        /** {@code /mrpunish forceexit <player>}: ends their staff mode and vanish (DESIGN.md 11.1). */
+        default void forceExit(CommandSender sender, String player) {
+        }
+
         /** {@code /mrpunish import vanilla [--clear]}: imports vanilla's ban list (DESIGN.md 7.9). */
         void importVanilla(CommandSender sender, boolean clear);
 
@@ -67,6 +71,7 @@ public final class AdminCommand {
         lines.put("reload", Perms.RELOAD);
         lines.put("version", Perms.ADMIN);
         lines.put("import", Perms.IMPORT);
+        lines.put("forceexit", Perms.ADMIN);
         return lines;
     }
 
@@ -86,6 +91,7 @@ public final class AdminCommand {
         map.put("version", Perms.ADMIN);
         map.put("import vanilla", Perms.IMPORT);
         map.put("import vanilla --clear", Perms.IMPORT);
+        map.put("forceexit ", Perms.ADMIN);
         return map;
     }
 
@@ -116,11 +122,24 @@ public final class AdminCommand {
 
     int dispatch(CommandSender sender, String input) {
         String sub = input.strip().replaceAll("\\s+", " ").toLowerCase(java.util.Locale.ROOT);
+        if (sub.startsWith("forceexit ")) {
+            if (!sender.hasPermission(Perms.ADMIN)) {
+                admin.messages().send(sender, "general.no-permission");
+                return 0;
+            }
+            admin.forceExit(sender, input.strip().split("\\s+")[1]);
+            return Command.SINGLE_SUCCESS;
+        }
         return switch (sub) {
             case "reload" -> reload(sender);
             case "version" -> version(sender);
             case "import vanilla" -> importVanilla(sender, false);
             case "import vanilla --clear" -> importVanilla(sender, true);
+            case "forceexit" -> {
+                admin.messages().send(sender, "general.usage",
+                        Placeholder.unparsed("usage", "/mrpunish forceexit <player>"));
+                yield 0;
+            }
             // "help" and anything unknown show the help (only what the sender may use).
             default -> help(sender);
         };

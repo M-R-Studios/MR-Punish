@@ -264,6 +264,9 @@ report-detail:
   unavailable: { material: LIGHT_GRAY_STAINED_GLASS_PANE, name: "<dark_gray><name>", lore: ["<gray><why>"] }
   why-closed: "The report is closed."
   why-claimed: "Claimed by <staff>."
+  # Need mrpunish.staffmode, and only work in staff mode or vanished (so you never appear next to them).
+  teleport-location: { slot: 19, material: ENDER_PEARL, name: "<aqua>Teleport to the report location", lore: ["<gray><location>"] }
+  teleport-target: { slot: 21, material: COMPASS, name: "<aqua>Teleport to <target>", lore: ["<gray>Only while they're online."] }
   punish: { slot: 23, material: IRON_AXE, name: "<red>Punish <target>", lore: ["<gray>Opens the punish menu."] }
   history: { slot: 25, material: BOOKSHELF, name: "<aqua>History of <target>" }
   # The latest notes (up to as many as there are slots), newest first.
@@ -306,3 +309,25 @@ invsee:
 endersee:
   title: "Ender chest of <player>"
   rows: 3
+
+# The tools given in staff mode (hotbar slots 0-8). A tool whose permission you don't have isn't given.
+# Right-click to use. They can't be dropped, moved or placed.
+staff-tools:
+  teleport: { slot: 0, material: COMPASS, name: "<aqua>Teleport", lore: ["<gray>Right-click: pick a player to teleport to."] }
+  random: { slot: 1, material: ENDER_EYE, name: "<aqua>Random player", lore: ["<gray>Right-click: teleport to a random player."] }
+  inspect: { slot: 2, material: BOOK, name: "<yellow>Inspect", lore: ["<gray>Right-click a player: inventory.", "<gray>Sneak + right-click: ender chest."] }
+  freeze: { slot: 3, material: BLAZE_ROD, name: "<aqua>Freeze wand", lore: ["<gray>Right-click a player: freeze or unfreeze."] }
+  punish: { slot: 4, material: IRON_AXE, name: "<red>Punish", lore: ["<gray>Right-click a player: punish menu."] }
+  vanish-on: { slot: 7, material: LIME_DYE, name: "<green>Vanished", lore: ["<gray>Right-click: become visible."] }
+  vanish-off: { slot: 7, material: GRAY_DYE, name: "<gray>Visible", lore: ["<gray>Right-click: vanish."] }
+  reports: { slot: 8, material: WRITABLE_BOOK, name: "<gold>Reports", lore: ["<gray>Right-click: open /reports."] }
+
+# The teleport tool's list of online players (45 a page).
+player-picker:
+  title: "Teleport to… (<page>/<pages>)"
+  rows: 6
+  entry-name: "<white><player>"
+  entry-lore: ["<gray>World: <white><world>", "<yellow>Click to teleport"]
+  previous-slot: 45
+  close-slot: 49
+  next-slot: 53

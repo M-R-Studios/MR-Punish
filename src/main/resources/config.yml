@@ -343,6 +343,23 @@ reports:
     harassment: { display: "Harassment", icon: IRON_SWORD }
     griefing: { display: "Griefing", icon: FLINT_AND_STEEL }
 
+staff-mode:
+  # Game mode in staff mode: SURVIVAL, ADVENTURE or SPECTATOR. CREATIVE isn't allowed, because the
+  # creative inventory could copy staff tools. The original game mode is restored on exit.
+  gamemode: SURVIVAL
+  # Vanish when entering staff mode, and un-vanish on exit (unless you were already vanished before).
+  vanish: true
+  # Allow breaking and placing blocks in staff mode.
+  allow-build: false
+  # Allow picking up items in staff mode. Picked-up items are lost on exit, because the inventory is restored.
+  allow-pickup: false
+  # Allow opening containers in staff mode. You see the real container but can't take or add items.
+  allow-containers: true
+  # Show the staff scoreboard (scoreboard.yml) in staff mode.
+  scoreboard: true
+  # Where you are after leaving staff mode: STAY (where you are now) or RETURN (where you entered it).
+  exit-location: STAY
+
 vanish:
   # Keep players vanished across logout and restart.
   persist: true
@@ -392,6 +409,7 @@ commands:
   sc: { enabled: true, aliases: [] }
   stafflist: { enabled: true, aliases: [] }
   vanish: { enabled: true, aliases: [v] }
+  staffmode: { enabled: true, aliases: [sm] }
   freeze: { enabled: true, aliases: [] }
   unfreeze: { enabled: true, aliases: [] }
   invsee: { enabled: true, aliases: [] }

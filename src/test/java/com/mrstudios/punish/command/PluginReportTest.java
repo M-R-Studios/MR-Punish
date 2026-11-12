@@ -443,6 +443,31 @@ class PluginReportTest {
     }
 
     @Test
+    void teleportButtonsOnlyWorkInStaffModeOrVanished() throws Exception {
+        alex.teleport(alex.getLocation().clone().add(40, 0, 0));
+        long id = report(alex, "Steve", "spam");
+        Report r = byId(id);
+        openDetail(mod, 0);
+        drain(mod);
+        click(mod, 19);
+        assertTrue(drain(mod).contains("MR-Punish » Go into staff mode or vanish first, so you don't appear next to"
+                + " them."));
+        plugin.vanish().vanish(mod);
+        click(mod, 19);
+        assertEquals(r.x().intValue(), mod.getLocation().getBlockX(), "at the reporter's location");
+        openDetail(mod, 0);
+        steve.teleport(steve.getLocation().clone().add(-60, 0, 0));
+        click(mod, 21);
+        assertEquals(steve.getLocation().getBlockX(), mod.getLocation().getBlockX(), "at the reported player");
+        // Without mrpunish.staffmode the buttons are greyed.
+        openDetail(mod2, 0);
+        mod2.addAttachment(plugin, "mrpunish.staffmode", false);
+        mod2.recalculatePermissions();
+        openDetail(mod2, 0);
+        assertEquals(Material.GRAY_DYE, type(mod2, 19));
+    }
+
+    @Test
     void theListShowsFiltersAndConsoleCantUseTheCommands() throws Exception {
         long first = report(alex, "Steve", "spam");
         long second = report(steve, "Alex", "spam");

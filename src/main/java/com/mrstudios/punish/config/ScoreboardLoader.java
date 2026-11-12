@@ -33,11 +33,60 @@ public final class ScoreboardLoader {
 
     LoadResult<ScoreboardSettings> read(YamlConfiguration yaml) {
         List<String> warnings = new ArrayList<>();
+        java.util.Set<String> known = java.util.Set.of(migrator.versionKey(), "update-ticks", "title", "lines",
+                "vanish-on", "vanish-off");
         for (String key : yaml.getKeys(false)) {
-            if (!key.equals(migrator.versionKey())) {
+            if (!known.contains(key)) {
                 warnings.add(key + " is not a known setting (typo?), ignored");
             }
         }
-        return LoadResult.loaded(ScoreboardSettings.DEFAULTS, warnings);
+        ScoreboardSettings def = ScoreboardSettings.DEFAULTS;
+        int ticks = def.updateTicks();
+        if (yaml.contains("update-ticks")) {
+            int n = yaml.getInt("update-ticks", -1);
+            if (!yaml.isInt("update-ticks") || n < 10 || n > 200) {
+                warnings.add("update-ticks: '" + yaml.get("update-ticks") + "' is not 10-200, using " + ticks);
+            } else {
+                ticks = n;
+            }
+        } else {
+            warnings.add("update-ticks is missing, using " + ticks);
+        }
+        String title = text(yaml, "title", def.title(), warnings);
+        List<String> lines = def.lines();
+        if (yaml.isList("lines")) {
+            List<String> read = new ArrayList<>();
+            for (String line : yaml.getStringList("lines")) {
+                String problem = MiniMessageCheck.problem(line, ScoreboardSettings.PLACEHOLDERS);
+                if (problem != null) {
+                    warnings.add("lines: '" + line + "' " + problem + ", skipped");
+                } else {
+                    read.add(line);
+                }
+            }
+            if (read.size() > ScoreboardSettings.MAX_LINES) {
+                warnings.add("lines: only the first " + ScoreboardSettings.MAX_LINES + " lines are shown");
+                read = read.subList(0, ScoreboardSettings.MAX_LINES);
+            }
+            lines = read;
+        } else {
+            warnings.add("lines is " + (yaml.contains("lines") ? "not a list" : "missing") + ", using the default");
+        }
+        return LoadResult.loaded(new ScoreboardSettings(ticks, title, lines, text(yaml, "vanish-on", def.vanishOn(),
+                warnings), text(yaml, "vanish-off", def.vanishOff(), warnings)), warnings);
+    }
+
+    private static String text(YamlConfiguration yaml, String key, String def, List<String> warnings) {
+        if (!yaml.isString(key)) {
+            warnings.add(key + (yaml.contains(key) ? " is not text" : " is missing") + ", using the default");
+            return def;
+        }
+        String value = yaml.getString(key);
+        String problem = MiniMessageCheck.problem(value, ScoreboardSettings.PLACEHOLDERS);
+        if (problem != null) {
+            warnings.add(key + ": " + problem + ", using the default");
+            return def;
+        }
+        return value;
     }
 }

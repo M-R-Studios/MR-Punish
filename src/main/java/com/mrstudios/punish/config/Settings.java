@@ -36,7 +36,7 @@ public record Settings(TimeSpan historyPeriod, ReasonRegistry reasons, Map<Strin
         boolean luckperms, SoundSetting notifySound, Display display, Login login, boolean banKickOnline,
         int maxTextLength, SoundSetting punishedSound, SoundSetting failedSound, boolean warnTitle, Mute mute,
         SoundSetting warnedSound, Ip ip, Input input, boolean floodgate, Reports reports,
-        Vanish vanish, StaffChat staffChat, Freeze freeze) {
+        Vanish vanish, StaffChat staffChat, Freeze freeze, StaffMode staffMode) {
 
     public Settings {
         commands = Map.copyOf(commands);
@@ -195,5 +195,19 @@ public record Settings(TimeSpan historyPeriod, ReasonRegistry reasons, Map<Strin
         public Freeze {
             allowedCommands = java.util.Set.copyOf(allowedCommands);
         }
+    }
+
+    /** Where a staff member is after leaving staff mode. */
+    public enum ExitLocation {
+        STAY, RETURN
+    }
+
+    /**
+     * {@code staff-mode.*} (DESIGN.md 11.1).
+     *
+     * @param gameMode SURVIVAL, ADVENTURE or SPECTATOR (never CREATIVE: it could copy tools)
+     */
+    public record StaffMode(org.bukkit.GameMode gameMode, boolean vanish, boolean allowBuild, boolean allowPickup,
+            boolean allowContainers, boolean scoreboard, ExitLocation exitLocation) {
     }
 }

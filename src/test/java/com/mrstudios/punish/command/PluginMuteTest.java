@@ -50,6 +50,17 @@ class PluginMuteTest {
         protected java.util.Map<String, String[]> commandAliases() {
             return java.util.Map.of("whisperto", new String[] {"msg $1-"});
         }
+
+        // MockBukkit doesn't implement getTPS() or getAverageTickTime().
+        @Override
+        public double tps() {
+            return 20.0;
+        }
+
+        @Override
+        public double mspt() {
+            return 3.5;
+        }
     }
 
     @BeforeEach

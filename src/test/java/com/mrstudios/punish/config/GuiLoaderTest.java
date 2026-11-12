@@ -33,8 +33,9 @@ class GuiLoaderTest {
     void unknownKeysWarn() throws Exception {
         LoadResult<GuiSettings> gui = new GuiLoader().load(resource("gui.yml") + "\nfillr: { material: STONE }\n");
         assertEquals(List.of("fillr is not a known setting (typo?), ignored"), gui.warnings());
-        LoadResult<ScoreboardSettings> scoreboard = new ScoreboardLoader().load("scoreboard-version: 1\ntitle: x\n");
-        assertEquals(List.of("title is not a known setting (typo?), ignored"), scoreboard.warnings());
+        LoadResult<ScoreboardSettings> scoreboard = new ScoreboardLoader().load(resource("scoreboard.yml")
+                + "\ntitel: x\n");
+        assertEquals(List.of("titel is not a known setting (typo?), ignored"), scoreboard.warnings());
     }
 
     @Test
