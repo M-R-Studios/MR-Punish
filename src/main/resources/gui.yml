@@ -4,7 +4,7 @@
 # Nothing can be taken out of, moved in or put into any MR-Punish menu.
 
 # Do not change. Used to upgrade this file automatically when the plugin updates.
-gui-version: 1
+gui-version: 2
 
 # The item in every empty slot.
 filler: { material: GRAY_STAINED_GLASS_PANE, name: " " }
@@ -322,7 +322,8 @@ staff-tools:
   punish: { slot: 4, material: IRON_AXE, name: "<red>Punish", lore: ["<gray>Right-click a player: punish menu."] }
   vanish-on: { slot: 7, material: LIME_DYE, name: "<green>Vanished", lore: ["<gray>Right-click: become visible."] }
   vanish-off: { slot: 7, material: GRAY_DYE, name: "<gray>Visible", lore: ["<gray>Right-click: vanish."] }
-  reports: { slot: 8, material: WRITABLE_BOOK, name: "<gold>Reports", lore: ["<gray>Right-click: open /reports."] }
+  # Not a book and quill: Bedrock clients open their own book editor for those before the server can stop it.
+  reports: { slot: 8, material: PAPER, name: "<gold>Reports", lore: ["<gray>Right-click: open /reports."] }
   hub: { slot: 6, material: NETHER_STAR, name: "<yellow>Staff menu", lore: ["<gray>Right-click: open /staff."] }
 
 # The teleport tool's list of online players (45 a page).

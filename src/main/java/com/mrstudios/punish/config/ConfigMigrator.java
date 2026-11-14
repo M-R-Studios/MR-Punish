@@ -16,7 +16,7 @@ public final class ConfigMigrator {
 
     public static final int CONFIG_VERSION = 1;
     public static final int MESSAGES_VERSION = 1;
-    public static final int GUI_VERSION = 1;
+    public static final int GUI_VERSION = 2;
     public static final int PERMISSIONS_VERSION = 1;
     public static final int SCOREBOARD_VERSION = 1;
 
@@ -51,7 +51,15 @@ public final class ConfigMigrator {
     }
 
     public static ConfigMigrator forGui() {
-        return new ConfigMigrator("gui.yml", "gui-version", GUI_VERSION, List.of());
+        return new ConfigMigrator("gui.yml", "gui-version", GUI_VERSION, List.of(
+                // 1 -> 2: the staff-mode reports tool was a book and quill, which Bedrock clients open as an
+                // editor. Changed only if it's still a book.
+                new Migration(1, yaml -> {
+                    String material = yaml.getString("staff-tools.reports.material", "");
+                    if (GuiLoader.isBook(material)) {
+                        yaml.set("staff-tools.reports.material", "PAPER");
+                    }
+                })));
     }
 
     public static ConfigMigrator forPermissions() {

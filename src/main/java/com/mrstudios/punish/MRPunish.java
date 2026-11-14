@@ -122,6 +122,7 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
     private HistoryMenus history;
     private ReportService reports;
     private ReportMenus reportMenus;
+    private com.mrstudios.punish.gui.MenuOpener menuOpener;
     private com.mrstudios.punish.gui.StaffMenus staffMenus;
     private com.mrstudios.punish.network.SyncPoller sync;
     private com.mrstudios.punish.gui.StaffLogMenus staffLogMenus;
@@ -205,6 +206,9 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
             @EventHandler(priority = EventPriority.MONITOR)
             public void onQuit(PlayerQuitEvent event) {
                 rankCache.forget(event.getPlayer().getUniqueId());
+                if (menuOpener != null) {
+                    menuOpener.forget(event.getPlayer().getUniqueId());
+                }
             }
         }, this);
         // Every 60 s: a rank or exempt change while online updates the cached rank in the database
@@ -447,6 +451,10 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
             }
         }
         Items items = new Items();
+        // Bedrock players (through Geyser) get menus with a short switch delay (MenuOpener).
+        BedrockForms bedrockForms = forms;
+        menuOpener = new com.mrstudios.punish.gui.MenuOpener(this, bedrockForms::isBedrock);
+        com.mrstudios.punish.gui.MenuOpener.install(menuOpener);
         prompts = new PromptService(this, () -> state, forms);
         getServer().getPluginManager().registerEvents(prompts, this);
         staffChat = new StaffChat(this, () -> state, prompts::waiting);
@@ -573,6 +581,11 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
         staffProfile.show(sender, name);
     }
 
+    /** How menus are opened (the Bedrock switch delay); tests can change who counts as Bedrock. */
+    public com.mrstudios.punish.gui.MenuOpener menuOpener() {
+        return menuOpener;
+    }
+
     public ReportMenus reportMenus() {
         return reportMenus;
     }
@@ -683,6 +696,7 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
 
     @Override
     public void onDisable() {
+        com.mrstudios.punish.gui.MenuOpener.install(null);
         if (prompts != null) {
             prompts.dropAll();
         }

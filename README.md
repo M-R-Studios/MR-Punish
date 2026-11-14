@@ -2,9 +2,28 @@
 
 Staff management and punishments for Paper servers: escalating punishments, reports, staff tools and full history.
 
-By **MR Studios**. Work in progress: this is the configuration foundation. Punishments, menus and staff tools are being added step by step, and this README grows with them.
+By **MR Studios**.
 
-Requires Paper 1.21.11 and Java 21.
+## Features
+
+- **Punishments with automatic escalation**: warnings, mutes, bans, IP mutes and IP bans, each with reasons from `config.yml` whose duration grows with every repeat offence (7d, then 30d, then permanent...). A new punishment never shortens an active one.
+- **The `/punish` menu**: pick a type and a reason and see exactly what will happen (offence number, next duration, the whole ladder) before you confirm, with an optional note and a silent option.
+- **Full history**: every punishment stays, including removed and replaced ones, with who, when and why. Removing needs a reason and a high enough rank.
+- **Reports**: `/report` for players; claiming, resolving, rejecting and notes for staff; the reporter is told the outcome.
+- **Staff tools**: staff mode with tools (everything you had comes back exactly as it was), vanish, freeze, view-only inventory and ender chest inspection, staff chat, `/stafflist`, and the `/staff` menu with server information.
+- **Staff ranks**: a weighted hierarchy in `permissions.yml`. Staff can never punish themselves or anyone of an equal or higher rank; exempt players only by console.
+- **Staff logs**: every staff action in a searchable menu and in daily log files.
+- **Safe by design**: the database is the source of truth, nothing is half-applied, menus are view-only, IP addresses are only ever stored as keyed hashes and never shown.
+- **SQLite or MySQL/MariaDB**, and networks of servers sharing one MySQL database.
+- **Bedrock players** (Geyser + Floodgate) get forms wherever text is typed.
+
+## Requirements
+
+- Paper 1.21.11 and Java 21.
+- Recommended: [LuckPerms](https://luckperms.net), so offline players' ranks are always current (see [Staff ranks](#staff-ranks)).
+- Optional: Floodgate for Bedrock forms, EssentialsX (see [Commands](#commands) and [Vanish](#vanish)).
+
+Drop the jar into `plugins/`, start the server once, then edit the files below and run `/mrpunish reload`.
 
 ## Files
 
@@ -12,13 +31,29 @@ MR-Punish creates five files in `plugins/MR-Punish/`, each with comments explain
 
 | File | What's in it |
 |---|---|
-| `config.yml` | Punishment reasons and their escalation, the fallback reason for each type, command switches. |
+| `config.yml` | Everything about how MR-Punish behaves; see the overview below. |
 | `messages.yml` | Every message (MiniMessage). Set a message to `""` to turn it off. |
 | `gui.yml` | Every menu: titles, slots, items, names, lore and sounds, and how buttons you can't use look (`no-permission.mode`: `GREY` or `HIDE`). |
 | `permissions.yml` | Staff ranks: weights, display names and what each rank grants. This is MR-Punish's own file, not the server's `permissions.yml`. |
-| `scoreboard.yml` | The staff-mode scoreboard (filled in when staff mode is added). |
+| `scoreboard.yml` | The staff-mode sidebar: title, lines, placeholders and how often it updates. |
 
 After editing, run `/mrpunish reload`. Each file reloads on its own: if one has a mistake, the reply names the file, the line and the problem, and the previous settings for that file stay in use while the others still reload. Small mistakes (an invalid value) fall back to the default for that value and are listed as warnings. A broken rank hierarchy in `permissions.yml` (two ranks with the same weight, a missing permission, an unknown or circular `inherits`) is never applied, and a `config.yml` without an enabled fallback reason for every type isn't either. If a file is broken when the server starts, its built-in defaults are used and the console says why.
+
+### `config.yml` at a glance
+
+| Section | What it sets |
+|---|---|
+| `server-name`, `date-format`, `time-zone`, `appeal-link` | How this server is named in logs and how dates and the appeal link are shown. |
+| `escalation`, `fallback-reasons`, `reasons` | Which offences count towards escalation and for how long, the reason used when none is given, and every punishment reason with its ladder. |
+| `warnings`, `mute`, `ban`, `announcements` | How long warnings show as active, what a mute blocks, whether a ban kicks online players, and which punishments are announced publicly. |
+| `ip` | IP features (off by default), the IPv6 grouping, and how long IP links are kept. |
+| `login` | What happens when bans can't be checked at login (`fail-policy`). |
+| `input`, `bedrock` | Typing notes and reasons in chat (cancel word, timeout) and Floodgate forms for Bedrock. |
+| `reports` | Report reasons, cooldown, limits, claim timeout and reminders. |
+| `staff-mode`, `vanish`, `freeze`, `staff-chat` | The staff tools. |
+| `network`, `logs` | Network sync (MySQL) and the staff action logs. |
+| `commands` | Turn each command on or off and give it extra labels (needs a restart). |
+| `storage`, `hooks`, `sounds` | SQLite or MySQL, the LuckPerms hook, and every sound. |
 
 ## Storage
 
@@ -52,7 +87,11 @@ A muted player can't chat, can't use the commands in `mute.blocked-commands`, an
 
 IP features are **off** by default (`ip.enabled: false`). While they're off, MR-Punish stores nothing about IP addresses, and the IP commands say they're disabled. Turn them on in `config.yml` and restart.
 
-When they're on, MR-Punish never stores or shows an IP address. It keeps only a keyed hash of each address (HMAC-SHA256), using a random secret in `plugins/MR-Punish/ip-secret.key` that's created the first time. **Back that file up**: if it's lost, existing IP punishments stop matching. On a network that shares one MySQL database, copy the same file to every server. If the key doesn't match the one the database was used with, IP features stay off and the console says why. IPv6 addresses are grouped by `ip.ipv6-prefix` (a /64 by default).
+When they're on, MR-Punish never stores or shows an IP address. It keeps only a keyed hash of each address (HMAC-SHA256), using a random secret in `plugins/MR-Punish/ip-secret.key` that's created the first time.
+
+> **Back up `ip-secret.key`.** If it's lost, existing IP punishments stop matching, and a new key can't bring them back.
+
+On a network that shares one MySQL database, copy the same file to every server. If the key doesn't match the one the database was used with, IP features stay off and the console says why. IPv6 addresses are grouped by `ip.ipv6-prefix` (a /64 by default).
 
 `/banip` and `/muteip` punish the player's current IP (or the last one they were seen with). Every account on that IP is affected: online accounts are kicked or muted at once, and any account joining from it is refused or muted. Accounts seen on the same IP within `ip.association-days` count as associated: if any of them is exempt or has a rank equal to or higher than yours, the action is refused, and staff only ever see a count of accounts, never names or addresses. `/unbanip` and `/unmuteip` remove the IP punishments on every IP the player used within `ip.association-days`. A player's IP links are deleted after `ip.retention-days` without a login from that IP, and all of them are deleted at startup if IP features are turned off.
 
@@ -84,13 +123,13 @@ Staff with `mrpunish.reports` are told about each new report (click to open `/re
 
 ## Vanish
 
-`/vanish` (`mrpunish.vanish`) hides you from players without `mrpunish.vanish.see` and from staff of a lower rank; staff of your rank or higher still see you. `/vanish <player>` needs `mrpunish.vanish.others` and a higher rank, and only works on players who could make themselves visible again. While vanished there's no join or quit message (staff who can see you are told instead), you're left out of the server list and its player count, you can't pick up items or arrows, don't trigger pressure plates or tripwires, mobs ignore you and sleeping skips you; the action bar reminds you every `vanish.reminder-seconds`. MR-Punish sets the `vanished` metadata that many plugins read, and with EssentialsX installed it also marks vanished players as hidden in Essentials, so its `/list` and AFK messages leave them out. Use one vanish system, not both: MR-Punish's `/vanish` or Essentials'.
+`/vanish` (`mrpunish.vanish`) hides you from players without `mrpunish.vanish.see` and from staff of a lower rank; staff of your rank or higher still see you. `/vanish <player>` needs `mrpunish.vanish.others` and a higher rank, and only works on players who could make themselves visible again. While vanished there's no join or quit message (staff who can see you are told instead), your advancements and death messages only reach those who can see you, you're left out of the server list and its player count, you can't pick up items or arrows, don't trigger pressure plates or tripwires, mobs ignore you and sleeping skips you; the action bar reminds you every `vanish.reminder-seconds`. MR-Punish sets the `vanished` metadata that many plugins read, and with EssentialsX installed it also marks vanished players as hidden in Essentials, so its `/list` and AFK messages leave them out. Use one vanish system, not both: MR-Punish's `/vanish` or Essentials'.
 
 With `vanish.persist` you stay vanished across a relog or restart. Nobody can get stuck invisible: hiding isn't saved by the server, losing `mrpunish.vanish` makes you visible again (at once, or at your next join), and when MR-Punish is disabled everyone is shown again (enabling it vanishes those players again).
 
 ## Staff mode
 
-`/staffmode` (alias `/sm`, `mrpunish.staffmode`) saves your whole state (inventory, armour, off-hand, game mode, flight, location, health, food, experience, effects, fire, air), clears your inventory and gives you the staff tools: a teleport compass (pick an online player), a random-player teleport, an inspect book (right-click a player for their inventory, sneak for their ender chest), a freeze wand, a punish axe, a vanish toggle, a reports book and a nether star that opens the `/staff` menu. You only get the tools you have the permission for. You fly, can't be hurt, don't get hungry, aren't targeted by mobs and are vanished (`staff-mode.vanish`); the staff scoreboard (`scoreboard.yml`) is shown. Tools can't be dropped, moved or placed; containers open but nothing can be taken (`staff-mode.allow-containers`), and building and pickup are off unless `allow-build` / `allow-pickup`.
+`/staffmode` (alias `/sm`, `mrpunish.staffmode`) saves your whole state (inventory, armour, off-hand, game mode, flight, location, health, food, experience, effects, fire, air), clears your inventory and gives you the staff tools: a teleport compass (pick an online player), a random-player teleport, an inspect book (right-click a player for their inventory, sneak for their ender chest), a freeze wand, a punish axe, a vanish toggle, a reports tool (paper) and a nether star that opens the `/staff` menu. You only get the tools you have the permission for. You fly, can't be hurt, don't get hungry, aren't targeted by mobs and are vanished (`staff-mode.vanish`); the staff scoreboard (`scoreboard.yml`) is shown. Tools can't be dropped, moved or placed; containers open but nothing can be taken (`staff-mode.allow-containers`), and building and pickup are off unless `allow-build` / `allow-pickup`.
 
 `/staffmode` again gives everything back exactly as it was, and so do logging out, a kick, `/stop` and disabling the plugin. If you die in staff mode nothing drops and you get everything back on respawn. The saved state is kept in your own player data, so after a crash your next join restores it ("You left staff mode unexpectedly last time"). Losing `mrpunish.staffmode` ends it within a minute. `/mrpunish forceexit <player>` (admins, with a higher rank) ends someone's staff mode and vanish. `/stafflist` shows "[staff mode]" to staff only. In a report's details, the teleport buttons (to the report location and to the reported player) work while you're in staff mode or vanished.
 
@@ -143,7 +182,13 @@ Anyone with a rank node automatically gets everything the rank grants, plus ever
 
 MR-Punish registers its commands through Paper's command system. Every command also works with the `mr-punish:` prefix (e.g. `/mr-punish:ban`), which helps if another plugin uses the same name. At startup, the console warns about any MR-Punish label that another plugin or a `commands.yml` alias owns, and `/mrpunish version` lists them.
 
-To give a label back to vanilla or another plugin, turn it off in `config.yml` (`commands.ban.enabled: false`, then restart): `/ban` is then the other command, and MR-Punish's stays available as `/mr-punish:ban`. **With EssentialsX**, also add an alias in the server's `commands.yml` (for example `ban: ["essentials:ban $1-"]`), and the same the other way round: EssentialsX keeps labels like `/v` in its own name and passes them on to MR-Punish only by default, which the startup warning points out; `v: ["mr-punish:v $1-"]` makes `/v` MR-Punish's for sure (the warning then goes away): by default EssentialsX hands its own command to any other plugin with the same name, which includes `/mr-punish:ban`, so without the alias `/ban` can still run MR-Punish's for a while after startup. To make a label that another plugin took point at MR-Punish instead, add an alias to the server's `commands.yml`, for example `ban: ["mr-punish:ban $1-"]`.
+To give a label back to vanilla or another plugin, turn it off in `config.yml` (for example `commands.ban.enabled: false`, then restart): `/ban` is then the other command, and MR-Punish's stays available as `/mr-punish:ban`. To make a label another plugin took point at MR-Punish instead, add an alias to the server's `commands.yml`, for example `ban: ["mr-punish:ban $1-"]`.
+
+**With EssentialsX**, which has its own `/ban`, `/mute`, `/vanish` (`/v`) and more:
+- EssentialsX passes its commands on to another plugin with the same name, so out of the box MR-Punish's commands run. The startup warning still lists those labels, because that hand-over isn't guaranteed.
+- To make a label MR-Punish's for sure, add `v: ["mr-punish:v $1-"]` (and the same for any other label) to the server's `commands.yml`. The warning for that label then goes away.
+- To give a label to EssentialsX, turn it off in MR-Punish's `config.yml` **and** add `ban: ["essentials:ban $1-"]` to `commands.yml`; otherwise EssentialsX may still hand `/ban` to MR-Punish for a while after startup.
+- Use one vanish system: MR-Punish's `/vanish` (EssentialsX's `/list` and AFK messages then leave vanished players out) or EssentialsX's, not both.
 
 | Command | Permission | What it does |
 |---|---|---|
@@ -181,7 +226,7 @@ To give a label back to vanilla or another plugin, turn it off in `config.yml` (
 
 ## Permissions
 
-Rank nodes grant the feature permissions through `permissions.yml`, so you can change what each rank can do. The default rank column shows which shipped rank grants each one. The permissions for features that aren't built yet are already declared so ranks can be set up now.
+Rank nodes grant the feature permissions through `permissions.yml`, so you can change what each rank can do. The default rank column shows which shipped rank grants each one.
 
 | Permission | Default rank | Plugin default | Meaning |
 |---|---|---|---|
@@ -216,6 +261,10 @@ Rank nodes grant the feature permissions through `permissions.yml`, so you can c
 | `mrpunish.import` | owner | false | Import the vanilla ban lists. |
 
 A reason in `config.yml` can also set its own `permission:`, which is then needed to use that reason.
+
+## Bedrock players
+
+With Geyser and Floodgate, Bedrock players use every menu by tapping. Bedrock clients close their old screen late when a menu changes, so for them MR-Punish closes the old menu, waits a moment and then opens the next one, and ignores that late close; menus don't flash shut. Staff-mode tools are never books, which Bedrock would open as an editor. Wherever Java players type text in chat (punishment notes, removal reasons, report reasons and notes, the `/staff` name search), Bedrock players get a Floodgate form instead (`bedrock.floodgate: true`); closing the form goes back without changing anything. Without Floodgate they type in chat like everyone else. The staff-mode scoreboard, the ban screen, the frozen title and the mute messages all work on Bedrock.
 
 ## Reporting bugs
 

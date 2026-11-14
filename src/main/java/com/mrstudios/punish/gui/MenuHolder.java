@@ -122,7 +122,22 @@ public abstract class MenuHolder implements InventoryHolder {
         closed = true;
     }
 
+    /**
+     * Opens this menu for {@code player}: at once for Java players; for Bedrock players through
+     * {@link MenuOpener} (closing what's open, a short wait, then this), see there.
+     */
     public void open(Player player) {
+        MenuOpener opener = MenuOpener.current();
+        if (opener == null) {
+            show(player);
+        } else {
+            opener.open(this, player);
+        }
+    }
+
+    /** Draws and shows this menu now. */
+    void show(Player player) {
+        closed = false;
         render();
         player.openInventory(inventory);
     }

@@ -417,8 +417,7 @@ bedrock:
 # Turn MR-Punish commands off so that another plugin or vanilla gets that label instead, and add
 # extra labels. The namespaced form (e.g. /mr-punish:ban) always works. Changing these needs a restart.
 # When a command is off, /mr-punish:<name> still works and the plain label stays with vanilla or the
-# other plugin. More entries appear here as their commands are added to MR-Punish. /mrpunish itself
-# (aliases /staffhelper and /mrp) is always on.
+# other plugin. /mrpunish itself (aliases /staffhelper and /mrp) is always on.
 commands:
   punish: { enabled: true, aliases: [p] }
   history: { enabled: true, aliases: [hist] }

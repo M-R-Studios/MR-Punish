@@ -70,6 +70,12 @@ public final class GuiLoader {
         }
     }
 
+    /** A book and quill or a written book: items whose own screen the client opens when used. */
+    public static boolean isBook(String material) {
+        String m = material == null ? "" : material.strip().toUpperCase(Locale.ROOT);
+        return m.equals("WRITABLE_BOOK") || m.equals("WRITTEN_BOOK");
+    }
+
     private static boolean isItemSection(ConfigurationSection section) {
         return section != null && section.contains("material");
     }
@@ -144,6 +150,11 @@ public final class GuiLoader {
         String material = section.getString("material", fallback.material()).strip().toUpperCase(Locale.ROOT);
         if (!isItem.test(material)) {
             warnings.add(path + ".material: '" + material + "' is not an item, using " + fallback.material());
+            material = fallback.material();
+        } else if (path.startsWith("staff-tools.") && isBook(material)) {
+            // Bedrock clients open a book's editor or reader themselves when it's used: never a tool.
+            warnings.add(path + ".material: '" + material + "' opens a book screen on Bedrock, so it can't be a staff"
+                    + " tool, using " + fallback.material());
             material = fallback.material();
         }
         Object name = section.get("name");

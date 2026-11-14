@@ -215,7 +215,7 @@ class PluginStaffModeTest {
             }
         }
         assertEquals(List.of(Material.COMPASS, Material.ENDER_EYE, Material.BOOK, Material.BLAZE_ROD,
-                Material.IRON_AXE, Material.NETHER_STAR, Material.LIME_DYE, Material.WRITABLE_BOOK), tools);
+                Material.IRON_AXE, Material.NETHER_STAR, Material.LIME_DYE, Material.PAPER), tools);
         assertTrue(plugin.vanish().isVanished(mod.getUniqueId()), "staff-mode.vanish");
         assertNotEquals(server.getScoreboardManager().getMainScoreboard(), mod.getScoreboard(), "staff board");
         commands.toggleStaffMode(mod);

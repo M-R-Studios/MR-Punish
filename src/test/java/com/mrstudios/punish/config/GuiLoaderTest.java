@@ -29,6 +29,34 @@ class GuiLoaderTest {
         assertEquals(List.of(), scoreboard.warnings());
     }
 
+    /** Bedrock clients open a book's own screen when it's used, so a staff tool can't be one. */
+    @Test
+    void theReportsToolIsNeverABook() throws Exception {
+        String shipped = resource("gui.yml");
+        assertEquals("PAPER", new GuiLoader().load(shipped).value().item("staff-tools.reports").material());
+        LoadResult<GuiSettings> book = new GuiLoader().load(shipped.replace("material: PAPER, name: \"<gold>Reports\"",
+                "material: WRITABLE_BOOK, name: \"<gold>Reports\""));
+        assertEquals("PAPER", book.value().item("staff-tools.reports").material());
+        assertTrue(book.warnings().get(0).contains("opens a book screen on Bedrock"), book.warnings().toString());
+        LoadResult<GuiSettings> written = new GuiLoader().load(shipped.replace("material: COMPASS, name: \"<aqua>Teleport\"",
+                "material: WRITTEN_BOOK, name: \"<aqua>Teleport\""));
+        assertEquals("COMPASS", written.value().item("staff-tools.teleport").material());
+        // Menu icons aren't used as items, so they can stay books.
+        assertEquals("WRITABLE_BOOK", new GuiLoader().load(shipped).value().item("staff-menu.reports").material());
+    }
+
+    @Test
+    void version1FilesGetThePaperReportsToolOnlyIfItWasStillABook() throws Exception {
+        String v1 = resource("gui.yml").replace("gui-version: 2", "gui-version: 1");
+        LoadResult<GuiSettings> old = new GuiLoader().load(v1.replace("material: PAPER, name: \"<gold>Reports\"",
+                "material: WRITABLE_BOOK, name: \"<gold>Reports\""));
+        assertEquals("PAPER", old.value().item("staff-tools.reports").material());
+        assertEquals(List.of(), old.warnings(), "migrated, not warned about");
+        LoadResult<GuiSettings> custom = new GuiLoader().load(v1.replace("material: PAPER, name: \"<gold>Reports\"",
+                "material: MAP, name: \"<gold>Reports\""));
+        assertEquals("MAP", custom.value().item("staff-tools.reports").material(), "someone's own choice is kept");
+    }
+
     @Test
     void unknownKeysWarn() throws Exception {
         LoadResult<GuiSettings> gui = new GuiLoader().load(resource("gui.yml") + "\nfillr: { material: STONE }\n");

@@ -253,6 +253,38 @@ public final class VanishService implements Listener {
         }
     }
 
+    /**
+     * A vanished player's advancement isn't announced to everyone: only those who can see them
+     * (and the console) get the message.
+     */
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onAdvancement(org.bukkit.event.player.PlayerAdvancementDoneEvent event) {
+        net.kyori.adventure.text.Component message = event.message();
+        if (message != null && isVanished(event.getPlayer().getUniqueId())) {
+            event.message(null);
+            toSeers(event.getPlayer(), message);
+        }
+    }
+
+    /** The same for a vanished player's death message. */
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onDeath(org.bukkit.event.entity.PlayerDeathEvent event) {
+        net.kyori.adventure.text.Component message = event.deathMessage();
+        if (message != null && isVanished(event.getPlayer().getUniqueId())) {
+            event.deathMessage(null);
+            toSeers(event.getPlayer(), message);
+        }
+    }
+
+    private void toSeers(Player vanishedPlayer, net.kyori.adventure.text.Component message) {
+        for (Player viewer : plugin.getServer().getOnlinePlayers()) {
+            if (viewer.equals(vanishedPlayer) || canSee(viewer, vanishedPlayer)) {
+                viewer.sendMessage(message);
+            }
+        }
+        plugin.getServer().getConsoleSender().sendMessage(message);
+    }
+
     /** Leaves the PDC byte (persist) but drops everything else. */
     @EventHandler(priority = EventPriority.MONITOR)
     public void onQuitDone(PlayerQuitEvent event) {

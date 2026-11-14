@@ -187,6 +187,39 @@ class PluginStaffTest {
     // ---- Vanish ----
 
     @Test
+    void advancementsAndDeathsDontGiveAVanishedPlayerAway() {
+        commands.vanishSelf(mod);
+        drainAll();
+        org.bukkit.advancement.Advancement diamonds = (org.bukkit.advancement.Advancement) java.lang.reflect.Proxy
+                .newProxyInstance(getClass().getClassLoader(), new Class<?>[] {org.bukkit.advancement.Advancement.class},
+                        (proxy, method, args) -> method.getName().equals("getKey")
+                                ? org.bukkit.NamespacedKey.minecraft("story/mine_diamond") : null);
+        org.bukkit.event.player.PlayerAdvancementDoneEvent done = new org.bukkit.event.player.PlayerAdvancementDoneEvent(
+                mod, diamonds, Component.text("Mod has made the advancement [Diamonds!]"));
+        server.getPluginManager().callEvent(done);
+        assertEquals(null, done.message(), "not broadcast");
+        assertTrue(drain(admin).contains("Mod has made the advancement [Diamonds!]"), "higher rank sees it");
+        assertTrue(drain(mod).contains("Mod has made the advancement [Diamonds!]"), "and the player");
+        assertTrue(drain(steve).isEmpty(), "players don't");
+        assertTrue(drain(helper).isEmpty(), "lower staff don't");
+
+        org.bukkit.event.entity.PlayerDeathEvent death = new org.bukkit.event.entity.PlayerDeathEvent(mod,
+                org.bukkit.damage.DamageSource.builder(org.bukkit.damage.DamageType.GENERIC_KILL).build(),
+                new ArrayList<>(), 0, Component.text("Mod fell out of the world"), true);
+        server.getPluginManager().callEvent(death);
+        assertEquals(null, death.deathMessage());
+        assertTrue(drain(admin).contains("Mod fell out of the world"));
+        assertTrue(drain(steve).isEmpty());
+
+        // Visible again: messages are left alone.
+        commands.vanishSelf(mod);
+        org.bukkit.event.player.PlayerAdvancementDoneEvent visible = new org.bukkit.event.player.PlayerAdvancementDoneEvent(
+                mod, diamonds, Component.text("Mod has made the advancement [Diamonds!]"));
+        server.getPluginManager().callEvent(visible);
+        assertEquals("Mod has made the advancement [Diamonds!]", plain(visible.message()));
+    }
+
+    @Test
     void whoSeesAVanishedModerator() {
         commands.vanishSelf(mod);
         assertTrue(drain(mod).contains("MR-Punish » You are now vanished."));

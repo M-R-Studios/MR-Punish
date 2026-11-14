@@ -72,7 +72,7 @@ class ConfigFilesTest {
         replaceIn("config.yml", "  BAN: other-ban\n", "");                    // missing fallback reason
         replaceIn("messages.yml", "prefix: \"", "prefix: \"\"\"");             // YAML error
         replaceIn("permissions.yml", "weight: 20", "weight: 10");              // duplicate rank weight
-        replaceIn("gui.yml", "gui-version: 1", "gui-version: 1\n  : [");      // YAML error
+        replaceIn("gui.yml", "gui-version: 2", "gui-version: 2\n  : [");      // YAML error
         ConfigFiles.Loaded loaded = files.load(log::add);
         PluginState after = loaded.applyTo(before);
 

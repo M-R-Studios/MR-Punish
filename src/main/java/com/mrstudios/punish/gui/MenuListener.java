@@ -70,8 +70,20 @@ public final class MenuListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onClose(InventoryCloseEvent event) {
         MenuHolder menu = menu(event.getInventory());
-        if (menu != null) {
-            menu.markClosed();
+        if (menu == null) {
+            return;
         }
+        MenuOpener opener = MenuOpener.current();
+        if (opener != null && event.getPlayer() instanceof Player player
+                && event.getReason() == InventoryCloseEvent.Reason.PLAYER && player.getUniqueId().equals(menu.viewer())
+                && opener.isStrayClose(player)) {
+            // A Bedrock client's late close of the screen before this one: the same menu, with its
+            // state, comes back (a confirmation isn't lost).
+            plugin.getLogger().fine("Ignored a stray menu close from " + player.getName() + " (Bedrock); reopening.");
+            menu.markClosed();
+            opener.open(menu, player);
+            return;
+        }
+        menu.markClosed();
     }
 }

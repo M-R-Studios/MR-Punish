@@ -44,16 +44,19 @@ class ConfigMigratorTest {
     }
 
     @Test
-    void allFiveShippedMigratorsAreAtVersionOneWithNoMigrations() throws Exception {
+    void theShippedMigratorsAndTheirVersions() throws Exception {
         List<ConfigMigrator> shipped = List.of(ConfigMigrator.forConfig(), ConfigMigrator.forMessages(),
                 ConfigMigrator.forGui(), ConfigMigrator.forPermissions(), ConfigMigrator.forScoreboard());
         List<String> names = new ArrayList<>();
         for (ConfigMigrator migrator : shipped) {
             YamlConfiguration yaml = yaml(migrator.versionKey() + ": 1\nsome: value\n");
-            String before = yaml.saveToString();
-            assertEquals(1, migrator.current());
+            // gui.yml 1 -> 2 only touches a reports tool that's still a book; nothing else changes.
+            int expected = migrator.fileName().equals("gui.yml") ? 2 : 1;
+            assertEquals(expected, migrator.current());
             assertEquals(1, migrator.migrate(yaml));
-            assertEquals(before, yaml.saveToString());
+            assertEquals(expected, yaml.getInt(migrator.versionKey()));
+            assertEquals("value", yaml.getString("some"));
+            assertEquals(2, yaml.getKeys(false).size());
             names.add(migrator.fileName() + "/" + migrator.versionKey());
         }
         assertEquals(List.of("config.yml/config-version", "messages.yml/messages-version", "gui.yml/gui-version",
@@ -63,7 +66,7 @@ class ConfigMigratorTest {
     @Test
     void eachShippedFileRefusesANewerVersion() throws Exception {
         for (ConfigMigrator migrator : List.of(ConfigMigrator.forGui(), ConfigMigrator.forPermissions())) {
-            YamlConfiguration yaml = yaml(migrator.versionKey() + ": 2\n");
+            YamlConfiguration yaml = yaml(migrator.versionKey() + ": " + (migrator.current() + 1) + "\n");
             ConfigException e = assertThrows(ConfigException.class, () -> migrator.migrate(yaml));
             assertTrue(e.getMessage().startsWith(migrator.fileName()), e.getMessage());
         }
