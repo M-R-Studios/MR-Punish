@@ -49,6 +49,7 @@
 - `/stafflog [staff] [page]`: every staff action, newest first, filtered by kind or staff member; entries open the punishment or report. Also written to daily files in `logs/` (`logs.*`).
 - `/mrpunish staff <player>`: a staff member's punishments, handled reports and last actions.
 - The punish menu's head shows the reports against the player.
+- Networks on one MySQL/MariaDB database: a player banned on one server is kicked from the others; mutes, unmutes, warnings, freezes and unfreezes from another server apply within `network.poll-seconds` (3 s); staff are told about reports made on any server.
 
 ### Changed
 - `/vanish` in staff mode now updates the vanish tool.

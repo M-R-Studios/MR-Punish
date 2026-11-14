@@ -263,12 +263,60 @@ public final class MuteEnforcement implements Listener, PunishmentService.Listen
 
     @Override
     public void issued(PluginState snapshot, Requests.Issue request, Requests.IssueResult.Committed committed) {
-        Punishment p = committed.punishment();
+        applyIssued(snapshot, committed.punishment(), committed.replaced());
+    }
+
+    /**
+     * A punishment issued on another server sharing the database (DESIGN.md 9.4), read again from
+     * the database: a mute is cached and announced to the players it covers who are here; a
+     * warning for a player who is here is shown now (it was stored for delivery, since they weren't
+     * on the issuing server).
+     */
+    public void remoteIssued(Punishment p) {
+        if (!p.isActive(clock.getAsLong())) {
+            return;
+        }
+        if (p.type() == PunishmentType.WARN) {
+            Player online = plugin.getServer().getPlayer(p.targetUuid());
+            if (online != null) {
+                deliverOfflineWarnings(online);
+            }
+            return;
+        }
+        if (p.type() != PunishmentType.MUTE && p.type() != PunishmentType.IP_MUTE) {
+            return;
+        }
+        List<UUID> covered = p.type() == PunishmentType.IP_MUTE ? ip.onlineOn(p.ipHash()) : List.of(p.targetUuid());
+        if (covered.stream().anyMatch(uuid -> plugin.getServer().getPlayer(uuid) != null)) {
+            applyIssued(state.get(), p, List.of());
+        }
+    }
+
+    /** A mute removed on another server: forgotten here, and the players it covered told if they're free. */
+    public void remoteRemoved(Punishment p) {
+        if (p.type() != PunishmentType.MUTE && p.type() != PunishmentType.IP_MUTE) {
+            return;
+        }
+        cache.forget(List.of(p.id()));
+        java.util.Set<UUID> affected = new java.util.LinkedHashSet<>();
+        affected.add(p.targetUuid());
+        if (p.ipHash() != null) {
+            affected.addAll(ip.onlineOn(p.ipHash()));
+        }
+        for (UUID uuid : affected) {
+            Player online = plugin.getServer().getPlayer(uuid);
+            if (online != null && muteOf(online).isEmpty()) {
+                state.get().messages().send(online, "target.unmuted");
+            }
+        }
+    }
+
+    private void applyIssued(PluginState snapshot, Punishment p, List<Long> replaced) {
         Player online = plugin.getServer().getPlayer(p.targetUuid());
         Messages m = snapshot.messages();
         Settings settings = snapshot.settings();
         if (p.type() == PunishmentType.MUTE || p.type() == PunishmentType.IP_MUTE) {
-            cache.forget(committed.replaced());
+            cache.forget(replaced);
             cache.put(p);
             List<UUID> told = p.type() == PunishmentType.IP_MUTE ? ip.onlineOn(p.ipHash()) : List.of(p.targetUuid());
             for (UUID uuid : told) {

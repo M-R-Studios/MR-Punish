@@ -390,6 +390,13 @@ staff-chat:
   # Messages starting with this go to staff chat (for players with mrpunish.staffchat). "" = off.
   prefix: "#"
 
+network:
+  # MySQL only: how often (in seconds) this server checks for changes made on other servers sharing
+  # the database: it kicks newly banned players, updates mutes, freezes or unfreezes players who are
+  # here, and tells staff here about new reports. 1-60. Logins always check the database directly,
+  # so bans apply everywhere at once.
+  poll-seconds: 3
+
 logs:
   file:
     # Also write staff actions to plugins/MR-Punish/logs/staff-YYYY-MM-DD.log.

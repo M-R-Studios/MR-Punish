@@ -3,6 +3,7 @@ package com.mrstudios.punish.punish;
 import com.mrstudios.punish.punish.Requests.RemoveResult;
 import com.mrstudios.punish.rank.Authority;
 import com.mrstudios.punish.storage.ActionRepo;
+import com.mrstudios.punish.storage.SyncRepo;
 import com.mrstudios.punish.storage.Database;
 import com.mrstudios.punish.storage.PunishmentRepo;
 import com.mrstudios.punish.storage.PunishmentRepo.Subject;
@@ -23,7 +24,10 @@ final class RemoveTx {
     private final PunishmentRepo punishments;
     private final ActionRepo actions;
 
+    private final SyncRepo sync;
+
     RemoveTx(Database database) {
+        this.sync = new SyncRepo(database);
         this.punishments = new PunishmentRepo(database);
         this.actions = new ActionRepo(database);
     }
@@ -98,7 +102,9 @@ final class RemoveTx {
                 target.name(), ids.get(0), type + " " + ids.stream().map(i -> "#" + i).toList() + " " + reason));
         List<Punishment> removed = new ArrayList<>();
         for (long id : ids) {
-            removed.add(punishments.byId(c, id).orElseThrow());
+            Punishment p = punishments.byId(c, id).orElseThrow();
+            removed.add(p);
+            sync.insert(c, now, server, SyncRepo.REMOVE, p.targetUuid(), p.ipHash(), id);
         }
         return new RemoveResult.Removed(removed);
     }

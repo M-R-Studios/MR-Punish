@@ -283,11 +283,29 @@ public final class BanEnforcement implements Listener, PunishmentService.Listene
 
     @Override
     public void issued(PluginState snapshot, Requests.Issue request, Requests.IssueResult.Committed committed) {
-        Punishment p = committed.punishment();
+        applyBan(snapshot, committed.punishment(), committed.replaced());
+    }
+
+    /**
+     * A ban issued on another server sharing the database (DESIGN.md 9.4): cached, and the players
+     * it covers kicked if they're here. {@code p} was read again from the database.
+     */
+    public void remoteIssued(Punishment p) {
+        if (p.isActive(clock.getAsLong())) {
+            applyBan(state.get(), p, List.of());
+        }
+    }
+
+    /** A ban removed on another server: no longer in the login cache here. */
+    public void remoteRemoved(Punishment p) {
+        cache.forget(List.of(p.id()));
+    }
+
+    private void applyBan(PluginState snapshot, Punishment p, List<Long> replaced) {
         if (p.type() != PunishmentType.BAN && p.type() != PunishmentType.IP_BAN) {
             return;
         }
-        cache.forget(committed.replaced());
+        cache.forget(replaced);
         cache.put(p);
         if (!snapshot.settings().banKickOnline()) {
             return;

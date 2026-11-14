@@ -32,19 +32,19 @@ class HistoryQueryTest {
 
     @TempDir
     Path dir;
-    private SqliteDatabase db;
+    private Database db;
     private PunishmentRepo repo;
 
     @BeforeEach
     void setUp() throws Exception {
-        db = new SqliteDatabase(dir.resolve("punishments.db").toFile());
+        db = TestDatabases.open(dir);
         Migrations.shipped(() -> 0L).migrate(db, line -> { });
         repo = new PunishmentRepo(db);
     }
 
     @AfterEach
     void tearDown() {
-        db.close();
+        TestDatabases.dispose(db);
     }
 
     private long add(PunishmentType type, UUID target, String hash, Long expiresAt, StoredStatus status) throws Exception {

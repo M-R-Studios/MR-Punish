@@ -27,19 +27,19 @@ class ReportRepoTest {
 
     @TempDir
     Path dir;
-    private SqliteDatabase db;
+    private Database db;
     private ReportRepo repo;
 
     @BeforeEach
     void setUp() throws Exception {
-        db = new SqliteDatabase(dir.resolve("punishments.db").toFile());
+        db = TestDatabases.open(dir);
         Migrations.shipped(() -> 0L).migrate(db, line -> { });
         repo = new ReportRepo(db);
     }
 
     @AfterEach
     void tearDown() {
-        db.close();
+        TestDatabases.dispose(db);
     }
 
     private long report(UUID reporter, UUID target, long at) throws Exception {

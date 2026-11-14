@@ -36,7 +36,7 @@ public record Settings(TimeSpan historyPeriod, ReasonRegistry reasons, Map<Strin
         boolean luckperms, SoundSetting notifySound, Display display, Login login, boolean banKickOnline,
         int maxTextLength, SoundSetting punishedSound, SoundSetting failedSound, boolean warnTitle, Mute mute,
         SoundSetting warnedSound, Ip ip, Input input, boolean floodgate, Reports reports,
-        Vanish vanish, StaffChat staffChat, Freeze freeze, StaffMode staffMode, Logs logs) {
+        Vanish vanish, StaffChat staffChat, Freeze freeze, StaffMode staffMode, Logs logs, int pollSeconds) {
 
     public Settings {
         commands = Map.copyOf(commands);

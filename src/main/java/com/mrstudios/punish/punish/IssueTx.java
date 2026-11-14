@@ -8,6 +8,7 @@ import com.mrstudios.punish.punish.Requests.IssueResult;
 import com.mrstudios.punish.rank.Authority;
 import com.mrstudios.punish.rank.Authority.Standing;
 import com.mrstudios.punish.storage.ActionRepo;
+import com.mrstudios.punish.storage.SyncRepo;
 import com.mrstudios.punish.storage.Database;
 import com.mrstudios.punish.storage.PlayerRepo;
 import com.mrstudios.punish.storage.PunishmentRepo;
@@ -162,6 +163,9 @@ final class IssueTx {
         }
         actions.insert(c, new ActionRepo.Action(now, context.server(), actor.uuid(), actor.name(), "PUNISH",
                 target.uuid(), target.name(), id, details.toString()));
+        // Other servers on the database kick, mute or warn the player if they're there (DESIGN.md 9.4).
+        new SyncRepo(database).insert(c, now, context.server(), SyncRepo.PUNISH, target.uuid(),
+                type.isIp() ? target.ipHash() : null, id);
         if (type == PunishmentType.WARN && !target.online()) {
             actions.deliver(c, target.uuid(), "WARN", id, now);
         }

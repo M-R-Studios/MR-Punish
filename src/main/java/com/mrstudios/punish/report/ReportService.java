@@ -3,6 +3,7 @@ package com.mrstudios.punish.report;
 import com.mrstudios.punish.config.PluginState;
 import com.mrstudios.punish.report.Report.Status;
 import com.mrstudios.punish.storage.ActionRepo;
+import com.mrstudios.punish.storage.SyncRepo;
 import com.mrstudios.punish.storage.PlayerRepo;
 import com.mrstudios.punish.storage.ReportRepo;
 import com.mrstudios.punish.storage.Storage;
@@ -224,6 +225,8 @@ public final class ReportService {
             long id = repo.insert(c, draft);
             actions().insert(c, new ActionRepo.Action(now, draft.server(), reporter.uuid(), reporter.name(),
                     "REPORT_CREATE", target, targetName, id, reasonText));
+            // Staff on the other servers are told too (DESIGN.md 9.4).
+            new SyncRepo(storage.database()).insert(c, now, draft.server(), SyncRepo.REPORT, target, null, id);
             return new Created.Sent(repo.byId(c, id).orElseThrow());
         });
         return work.handle((r, e) -> e == null ? r : createFailure(e, "saving a report on " + targetName))

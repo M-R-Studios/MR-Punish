@@ -10,6 +10,7 @@ import com.mrstudios.punish.punish.Requests;
 import com.mrstudios.punish.punish.Requests.IssueResult;
 import com.mrstudios.punish.rank.Authority;
 import com.mrstudios.punish.storage.ActionRepo;
+import com.mrstudios.punish.storage.SyncRepo;
 import com.mrstudios.punish.storage.FrozenRepo;
 import com.mrstudios.punish.storage.FrozenRepo.Frozen;
 import com.mrstudios.punish.storage.StorageException;
@@ -185,6 +186,8 @@ public final class FreezeService implements Listener {
             }
             actions().insert(c, new ActionRepo.Action(now, server, actor.uuid(), actor.name(), "FREEZE",
                     target.getUniqueId(), target.getName(), null, null));
+            new SyncRepo(plugin.storage().database()).insert(c, now, server, SyncRepo.FREEZE, target.getUniqueId(),
+                    null, null);
             return new Outcome.Done(row);
         }).handle((r, e) -> e == null ? r : failure(e, "freezing " + target.getName()))
                 .thenApplyAsync(r -> {
@@ -211,6 +214,7 @@ public final class FreezeService implements Listener {
             }
             actions().insert(c, new ActionRepo.Action(now, server, actor.uuid(), actor.name(), "UNFREEZE", uuid, name,
                     null, "frozen by " + row.get().byName()));
+            new SyncRepo(plugin.storage().database()).insert(c, now, server, SyncRepo.UNFREEZE, uuid, null, null);
             return new Outcome.Done(row.get());
         }).handle((r, e) -> e == null ? r : failure(e, "unfreezing " + name))
                 .thenApplyAsync(r -> {
@@ -245,6 +249,27 @@ public final class FreezeService implements Listener {
     }
 
     // ---- The effect ----
+
+    /**
+     * Another server sharing the database froze this player (DESIGN.md 9.4): the effect, if
+     * they're here. {@code row} was read from the database.
+     */
+    public void remoteFrozen(Frozen row) {
+        Player p = plugin.getServer().getPlayer(row.uuid());
+        if (p != null) {
+            apply(p, row, true);
+        }
+    }
+
+    /** Another server unfroze this player (their row is gone): the effect lifted if they're here. */
+    public void remoteUnfrozen(UUID uuid) {
+        pending.remove(uuid);
+        Player p = plugin.getServer().getPlayer(uuid);
+        if (p != null && isFrozen(uuid)) {
+            lift(p);
+            state().messages().send(p, "staff.unfrozen");
+        }
+    }
 
     /** Applies the effect (main thread). {@code tell} sends the frozen message, title and sound. */
     void apply(Player p, Frozen row, boolean tell) {

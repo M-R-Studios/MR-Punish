@@ -130,6 +130,14 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <!-- Paper ships this driver too. The storage and service tests use it only when
+                 MRPUNISH_TEST_MYSQL points at a MySQL/MariaDB server (see TestDatabases). -->
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <version>9.1.0</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>org.mockbukkit.mockbukkit</groupId>
             <artifactId>mockbukkit-v1.21</artifactId>
             <version>4.116.3</version>

@@ -123,6 +123,7 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
     private ReportService reports;
     private ReportMenus reportMenus;
     private com.mrstudios.punish.gui.StaffMenus staffMenus;
+    private com.mrstudios.punish.network.SyncPoller sync;
     private com.mrstudios.punish.gui.StaffLogMenus staffLogMenus;
     private com.mrstudios.punish.staff.StaffProfile staffProfile;
     /** {@code bedrock.floodgate} as at startup (changing it needs a restart). */
@@ -503,10 +504,59 @@ public class MRPunish extends JavaPlugin implements AdminCommand.Admin {
         // Every minute: release expired claims, and remind staff of open reports when it's time.
         getServer().getScheduler().runTaskTimer(this, notices::tick, 20L * 60, 20L * 60);
         reports.refreshOpenCount();
+        startSync(notices);
+    }
+
+    /**
+     * MySQL only: applies bans, mutes, freezes and reports from other servers sharing the database
+     * (DESIGN.md 9.4).
+     */
+    private void startSync(ReportNotices notices) {
+        sync = new com.mrstudios.punish.network.SyncPoller(storage, new com.mrstudios.punish.network.SyncPoller.Target() {
+            @Override
+            public void punishmentIssued(com.mrstudios.punish.punish.Punishment p) {
+                bans.remoteIssued(p);
+                mutes.remoteIssued(p);
+            }
+
+            @Override
+            public void punishmentRemoved(com.mrstudios.punish.punish.Punishment p) {
+                bans.remoteRemoved(p);
+                mutes.remoteRemoved(p);
+            }
+
+            @Override
+            public void frozen(com.mrstudios.punish.storage.FrozenRepo.Frozen row) {
+                freeze.remoteFrozen(row);
+            }
+
+            @Override
+            public void unfrozen(UUID uuid) {
+                freeze.remoteUnfrozen(uuid);
+            }
+
+            @Override
+            public void reportCreated(com.mrstudios.punish.report.Report report) {
+                reports.refreshOpenCount();
+                notices.created(report);
+            }
+        }, task -> getServer().getScheduler().runTask(this, task), () -> state.settings().pollSeconds(),
+                System::currentTimeMillis, getLogger());
+        if (!sync.active()) {
+            return;
+        }
+        getServer().getScheduler().runTaskTimer(this, sync::tick, 20L, 20L);
+        getLogger().info("Network sync on: changes from other servers on this database apply here within "
+                + state.settings().pollSeconds() + " s.");
     }
 
     public ReportService reports() {
         return reports;
+    }
+
+    /** Network sync (MySQL only; tests poll it directly). */
+    public com.mrstudios.punish.network.SyncPoller sync() {
+        return sync;
     }
 
     public com.mrstudios.punish.gui.StaffMenus staffMenus() {

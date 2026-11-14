@@ -26,7 +26,7 @@ class PlayerRepoTest {
 
     @TempDir
     Path dir;
-    private SqliteDatabase db;
+    private Database db;
     private PlayerRepo repo;
 
     private static final UUID A = UUID.fromString("00000000-0000-0000-0000-00000000000a");
@@ -34,14 +34,14 @@ class PlayerRepoTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        db = new SqliteDatabase(dir.resolve("punishments.db").toFile());
+        db = TestDatabases.open(dir);
         Migrations.shipped(() -> 0L).migrate(db, line -> { });
         repo = new PlayerRepo(db);
     }
 
     @AfterEach
     void tearDown() {
-        db.close();
+        TestDatabases.dispose(db);
     }
 
     private void visit(UUID uuid, String name, long at, String rank, int weight, boolean exempt) throws SQLException {
@@ -91,14 +91,14 @@ class PlayerRepoTest {
         long now = 100L * 24 * 60 * 60 * 1000;
         long day = 24L * 60 * 60 * 1000;
         db.with(c -> {
-            try (PreparedStatement s = c.prepareStatement("INSERT INTO sync_events (at, server, kind) VALUES (?, 's', 'PUNISH')")) {
+            try (PreparedStatement s = c.prepareStatement(TestDatabases.sql(db, "INSERT INTO sync_events (at, server, kind) VALUES (?, 's', 'PUNISH')"))) {
                 s.setLong(1, now - 2 * day);
                 s.executeUpdate();
                 s.setLong(1, now - 60_000);
                 s.executeUpdate();
             }
             try (PreparedStatement s = c.prepareStatement(
-                    "INSERT INTO deliveries (uuid, kind, ref_id, created_at, delivered_at) VALUES ('u', 'WARN', 1, 0, ?)")) {
+                    TestDatabases.sql(db, "INSERT INTO deliveries (uuid, kind, ref_id, created_at, delivered_at) VALUES ('u', 'WARN', 1, 0, ?)"))) {
                 s.setLong(1, now - 40 * day);
                 s.executeUpdate();
                 s.setLong(1, now - 5 * day);

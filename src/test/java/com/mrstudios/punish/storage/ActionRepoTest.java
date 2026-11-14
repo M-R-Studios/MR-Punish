@@ -23,19 +23,19 @@ class ActionRepoTest {
 
     @TempDir
     Path dir;
-    private SqliteDatabase db;
+    private Database db;
     private ActionRepo repo;
 
     @BeforeEach
     void setUp() throws Exception {
-        db = new SqliteDatabase(dir.resolve("punishments.db").toFile());
+        db = TestDatabases.open(dir);
         Migrations.shipped(() -> 0L).migrate(db, line -> { });
         repo = new ActionRepo(db);
     }
 
     @AfterEach
     void tearDown() {
-        db.close();
+        TestDatabases.dispose(db);
     }
 
     private void log(long at, UUID actor, String name, String action) throws Exception {

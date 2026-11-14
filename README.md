@@ -24,6 +24,20 @@ After editing, run `/mrpunish reload`. Each file reloads on its own: if one has 
 
 MR-Punish stores everything in a database: SQLite by default (`plugins/MR-Punish/punishments.db`, nothing to set up), or MySQL/MariaDB (`storage.type: MYSQL` in `config.yml`). Several servers can share one MySQL database; SQLite is for a single server and must never sit on a network share. Changing the storage type needs a restart, and data isn't copied between the two.
 
+### Networks (several servers on one MySQL database)
+
+Servers that share one MySQL/MariaDB database share punishments, history, reports, staff logs and freezes. Give each one its own `server-name`, and copy the same `ip-secret.key` to all of them if IP features are on.
+
+- Logins always check the database, so a ban applies on every server at once.
+- Every `network.poll-seconds` (3 by default), each server picks up what the others changed:
+  - a player banned on another server is kicked here;
+  - a mute or unmute from another server applies here, and the player is told;
+  - a warning given on another server is shown at once if the player is here;
+  - a freeze or unfreeze made elsewhere takes effect here (a frozen player who switches servers is frozen when they arrive);
+  - staff here are told about reports made on other servers.
+- Staff chat, vanish, staff mode and staff notifications stay per server.
+- If two staff on different servers punish the same player at the same moment, one punishment is saved and the other staff member is told someone got there first, with the new preview.
+
 The tables are created on first start and upgraded automatically when MR-Punish updates (SQLite gets a backup copy first; for MySQL, the console asks you to make one). A database made by a newer MR-Punish is never touched by an older one.
 
 If the database can't be reached at startup or goes away while the server runs, MR-Punish keeps running in a degraded mode. It doesn't save anything, tells online admins (`mrpunish.admin`) and every admin who joins, and tries again every 30 seconds until the database is back. `/mrpunish version` shows whether storage is connected and why not.
@@ -214,3 +228,5 @@ mvn -B clean package
 ```
 
 The jar is written to `target/`.
+
+The tests use SQLite. To run the storage and punishment tests against MySQL or MariaDB as well, point them at an empty test database: set `MRPUNISH_TEST_MYSQL=host:port/database`, `MRPUNISH_TEST_MYSQL_USER` and `MRPUNISH_TEST_MYSQL_PASSWORD`. Each test uses its own table prefix and drops its tables afterwards.

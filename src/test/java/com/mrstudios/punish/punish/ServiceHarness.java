@@ -13,7 +13,6 @@ import com.mrstudios.punish.rank.Authority.Standing;
 import com.mrstudios.punish.rank.OfflineRanks;
 import com.mrstudios.punish.storage.Migrations;
 import com.mrstudios.punish.storage.PlayerRepo;
-import com.mrstudios.punish.storage.SqliteDatabase;
 import com.mrstudios.punish.storage.Storage;
 import java.nio.file.Path;
 import java.sql.ResultSet;
@@ -70,7 +69,7 @@ final class ServiceHarness implements AutoCloseable {
         state = new PluginState(settings, new MessagesLoader(MessagesLoader.bundledDefaults()).defaults(),
                 new com.mrstudios.punish.config.GuiLoader().defaults(), new RankLoader(name -> true, RankLoader.bundledDefaults()).defaults(),
                 ScoreboardSettings.DEFAULTS);
-        storage = new Storage(settings.storage(), s -> new SqliteDatabase(dir.resolve("punishments.db").toFile()),
+        storage = new Storage(settings.storage(), s -> com.mrstudios.punish.storage.TestDatabases.open(dir),
                 Migrations.shipped(clock::get), log);
         if (!storage.start(10_000)) {
             throw new IllegalStateException("storage didn't start");
@@ -81,6 +80,11 @@ final class ServiceHarness implements AutoCloseable {
 
     @Override
     public void close() {
+        com.mrstudios.punish.storage.Database db = storage.database();
+        if (db != null && db.dialect() == com.mrstudios.punish.storage.Dialect.MYSQL) {
+            // The test's own tables go first; the pool closes with the storage below.
+            com.mrstudios.punish.storage.TestDatabases.dispose(db);
+        }
         storage.shutdown(5000);
     }
 
@@ -156,7 +160,7 @@ final class ServiceHarness implements AutoCloseable {
 
     int count(String table) throws Exception {
         return get(storage.executor().submit("test", c -> {
-            try (Statement s = c.createStatement(); ResultSet r = s.executeQuery("SELECT COUNT(*) FROM " + table)) {
+            try (Statement s = c.createStatement(); ResultSet r = s.executeQuery(sql("SELECT COUNT(*) FROM " + table))) {
                 r.next();
                 return r.getInt(1);
             }
@@ -166,7 +170,7 @@ final class ServiceHarness implements AutoCloseable {
     List<Map<String, Object>> rows(String sql) throws Exception {
         return get(storage.executor().submit("test", c -> {
             List<Map<String, Object>> out = new ArrayList<>();
-            try (Statement s = c.createStatement(); ResultSet r = s.executeQuery(sql)) {
+            try (Statement s = c.createStatement(); ResultSet r = s.executeQuery(sql(sql))) {
                 int columns = r.getMetaData().getColumnCount();
                 while (r.next()) {
                     Map<String, Object> row = new java.util.LinkedHashMap<>();
@@ -183,10 +187,15 @@ final class ServiceHarness implements AutoCloseable {
     void exec(String sql) throws Exception {
         get(storage.executor().submit("test", c -> {
             try (Statement s = c.createStatement()) {
-                s.execute(sql);
+                s.execute(sql(sql));
             }
             return null;
         }));
+    }
+
+    /** Test SQL with the shipped table names, for whichever database the tests run on. */
+    String sql(String sql) {
+        return com.mrstudios.punish.storage.TestDatabases.sql(storage.database(), sql);
     }
 
     static <T> T get(CompletableFuture<T> future) throws Exception {
